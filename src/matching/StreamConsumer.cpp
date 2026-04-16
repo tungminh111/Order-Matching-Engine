@@ -1,15 +1,19 @@
 #include "matching/StreamConsumer.hpp"
 
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #include <iostream>
 #include <stdexcept>
 
-StreamConsumer::StreamConsumer(std::shared_ptr<OrderBuffer> order_buffer)
+#include "matching/BytesBuffer.hpp"
+#include "matching/Order.hpp"
+
+StreamConsumer::StreamConsumer(
+    std::shared_ptr<OrderBuffer<1 << 15>> order_buffer)
     : order_buffer_(order_buffer) {}
 
 void StreamConsumer::start() {
@@ -49,13 +53,15 @@ void StreamConsumer::start() {
 
     std::cout << "StreamConsumer start successfully" << std::endl;
 
-
     fcntl(client_fd_, F_SETFL, O_NONBLOCK);
     char buffer[1 << 15];
-    while(true) {
+    while (true) {
         ssize_t bytes = recv(client_fd_, buffer, sizeof(buffer), 0);
         if (bytes > 0) {
-            byte_buffer.write(buffer, bytes); 
+            byte_buffer.write(buffer, bytes);
+            while (byte_buffer.canRead()) {
+                order_buffer_->write(byte_buffer.read());
+            }
         } else {
             continue;
         }
