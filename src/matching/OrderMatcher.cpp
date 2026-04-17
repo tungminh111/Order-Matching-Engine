@@ -2,7 +2,7 @@
 
 #include "matching/Order.hpp"
 
-std::vector<OrderQuantity> OrderMatcher::PriceLevel::matchOrder(
+std::vector<OrderQuantity> InstrumentOrderMatcher::PriceLevel::matchOrder(
     Order& new_order) {
     std::vector<OrderQuantity> ret;
     while (!orders_.empty()) {
@@ -25,41 +25,39 @@ std::vector<OrderQuantity> OrderMatcher::PriceLevel::matchOrder(
     return ret;
 }
 
-std::list<Order>::iterator OrderMatcher::PriceLevel::push(Order new_order) {
+std::list<Order>::iterator InstrumentOrderMatcher::PriceLevel::push(
+    Order new_order) {
     orders_.push_back(new_order);
     return std::prev(orders_.end());
 }
 
-void OrderMatcher::PriceLevel::erase(std::list<Order>::iterator order_pos) {
+void InstrumentOrderMatcher::PriceLevel::erase(
+    std::list<Order>::iterator order_pos) {
     orders_.erase(order_pos);
 }
 
-bool OrderMatcher::PriceLevel::isEmpty() { return orders_.size() == 0; }
+bool InstrumentOrderMatcher::PriceLevel::isEmpty() {
+    return orders_.size() == 0;
+}
 
-void OrderMatcher::start() {
-    while (true) {
-        if (!order_buffer_->canRead()) continue;
-
-        Order new_order = order_buffer_->read();
-        if (new_order.action_ == OrderAction::Create) {
-            addOrder(new_order);
-        } else if (new_order.action_ == OrderAction::Cancel) {
-            removeOrder(new_order.order_id_);
+void InstrumentOrderMatcher::handleOrder(Order new_order) {
+    if (new_order.action_ == OrderAction::Create) {
+        addOrder(new_order);
+    } else if (new_order.action_ == OrderAction::Cancel) {
+        removeOrder(new_order.order_id_);
+    } else {
+        std::list<Order>::iterator order_pos = order_map_[new_order.order_id_];
+        if (new_order.price_ == order_pos->price_ &&
+            new_order.quantity_ < order_pos->quantity_) {
+            order_pos->quantity_ = new_order.quantity_;
         } else {
-            std::list<Order>::iterator order_pos =
-                order_map_[new_order.order_id_];
-            if (new_order.price_ == order_pos->price_ &&
-                new_order.quantity_ < order_pos->quantity_) {
-                order_pos->quantity_ = new_order.quantity_;
-            } else {
-                removeOrder(new_order.order_id_);
-                addOrder(new_order);
-            }
+            removeOrder(new_order.order_id_);
+            addOrder(new_order);
         }
     }
 }
 
-void OrderMatcher::addOrder(Order new_order) {
+void InstrumentOrderMatcher::addOrder(Order new_order) {
     if (new_order.side_ == OrderSide::Buy) {
         int original_qty = new_order.quantity_;
         while (new_order.quantity_ != 0 &&
@@ -119,7 +117,7 @@ void OrderMatcher::addOrder(Order new_order) {
     }
 }
 
-void OrderMatcher::removeOrder(int order_id) {
+void InstrumentOrderMatcher::removeOrder(int order_id) {
     std::list<Order>::iterator order_pos = order_map_[order_id];
     if (order_pos->side_ == OrderSide::Buy) {
         bids_[order_pos->price_].erase(order_pos);
@@ -127,4 +125,12 @@ void OrderMatcher::removeOrder(int order_id) {
         asks_[order_pos->price_].erase(order_pos);
     }
     order_map_.erase(order_id);
+}
+
+void OrderMatcher::start() {
+    while (true) {
+        if (!order_buffer_->canRead()) continue;
+        Order new_order = order_buffer_->read();
+        instrument_matcher_[new_order.instrument_id_].handleOrder(new_order);
+    }
 }

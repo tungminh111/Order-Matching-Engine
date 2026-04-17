@@ -1,17 +1,17 @@
 #pragma once
 
-#include <iterator>
 #include <list>
 #include <map>
 #include <memory>
+#include <unordered_map>
 
 #include "matching/Order.hpp"
 #include "matching/OrderBuffer.hpp"
-class OrderMatcher {
+class InstrumentOrderMatcher {
    public:
-    OrderMatcher(std::shared_ptr<OrderBuffer<1 << 15>> order_buffer);
+    InstrumentOrderMatcher();
 
-    void start();
+    void handleOrder(Order new_order);
 
     class PriceLevel {
        public:
@@ -31,9 +31,19 @@ class OrderMatcher {
     void addOrder(Order new_order);
     void removeOrder(int order_id);
 
-    std::shared_ptr<OrderBuffer<1 << 15>> order_buffer_;
     std::map<int8_t, PriceLevel, std::greater<>> bids_;
     std::map<int8_t, PriceLevel> asks_;
 
-    std::map<int8_t, std::list<Order>::iterator> order_map_;
+    std::unordered_map<int8_t, std::list<Order>::iterator> order_map_;
+};
+
+class OrderMatcher {
+   public:
+    OrderMatcher(std::shared_ptr<OrderBuffer<1 << 15>> order_buffer);
+
+    void start();
+
+   private:
+    std::shared_ptr<OrderBuffer<1 << 15>> order_buffer_;
+    std::unordered_map<int8_t, InstrumentOrderMatcher> instrument_matcher_;
 };
