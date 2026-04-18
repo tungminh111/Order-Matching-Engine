@@ -12,7 +12,11 @@ class SPSC {
         last += 1;
     }
 
-    T read() { return buffer_[first++]; }
+    T read() {
+        T ret = buffer_[first & (capacity - 1)];
+        first += 1;
+        return ret;
+    }
 
     bool canRead() { return first < last; }
 
