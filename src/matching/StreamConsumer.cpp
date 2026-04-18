@@ -13,7 +13,7 @@
 #include "matching/Order.hpp"
 
 StreamConsumer::StreamConsumer(
-    std::shared_ptr<OrderBuffer<1 << 15>> order_buffer)
+    std::shared_ptr<SPSC<1 << 15>> order_buffer)
     : order_buffer_(order_buffer) {}
 
 void StreamConsumer::start() {

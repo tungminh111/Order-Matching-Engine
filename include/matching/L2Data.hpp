@@ -4,6 +4,8 @@
 struct alignas(64) L2Data {
     int8_t instrument_id_;
     int8_t price_level_;
-    int8_t quantity_;
+    int32_t quantity_;
     OrderSide side_;
+
+    int8_t sequence_id_;
 };

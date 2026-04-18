@@ -1,10 +1,17 @@
 #include "matching/OrderMatcher.hpp"
 
+#include "matching/L2Data.hpp"
 #include "matching/Order.hpp"
 
-std::vector<OrderQuantity> InstrumentOrderMatcher::PriceLevel::matchOrder(
+InstrumentOrderMatcher::InstrumentOrderMatcher(
+    std::shared_ptr<SPSC<L2Data, 1 << 15>> l2_data_buffer,
+    std::shared_ptr<SPSC<MatchedOrder, 1 << 15>> matched_order_buffer)
+    : l2_data_buffer_(l2_data_buffer),
+      matched_order_buffer_(matched_order_buffer) {}
+
+std::vector<MatchedOrder> InstrumentOrderMatcher::PriceLevel::matchOrder(
     Order& new_order) {
-    std::vector<OrderQuantity> ret;
+    std::vector<MatchedOrder> ret;
     while (!orders_.empty()) {
         int8_t matchedQuantity =
             std::min(new_order.quantity_, orders_.front().quantity_);
@@ -58,62 +65,82 @@ void InstrumentOrderMatcher::handleOrder(Order new_order) {
 }
 
 void InstrumentOrderMatcher::addOrder(Order new_order) {
+    int original_qty = new_order.quantity_;
     if (new_order.side_ == OrderSide::Buy) {
-        int original_qty = new_order.quantity_;
         while (new_order.quantity_ != 0 &&
                new_order.price_ >= asks_.begin()->first) {
-            auto matchedOrders = asks_.begin()->second.matchOrder(new_order);
+            auto matched_orders = asks_.begin()->second.matchOrder(new_order);
 
-            int32_t level_price_change = 0;
-            for (const OrderQuantity& order_quantity : matchedOrders) {
-                level_price_change += order_quantity.quantity_;
-                // notify matched trade
+            int32_t level_qty_change = 0;
+            for (const MatchedOrder& matched_order : matched_orders) {
+                level_qty_change -= matched_order.quantity_;
+                matched_order_buffer_->write(matched_order);
+
+                if (matched_order.match_full_) {
+                    order_map_.erase(matched_order.order_id_);
+                }
             }
 
-            // send L2 data
+            l2_data_buffer_->write(
+                L2Data{.instrument_id_ = new_order.instrument_id_,
+                       .price_level_ = asks_.begin()->first,
+                       .quantity_ = level_qty_change,
+                       .side_ = OrderSide::Sell});
 
             if (asks_.begin()->second.isEmpty()) {
                 asks_.erase(asks_.begin());
             }
         }
 
-        if (new_order.quantity_ != original_qty) {
-            // notify matched order
-        }
-
         if (new_order.quantity_ != 0) {
             auto order_pos = bids_[new_order.price_].push(new_order);
             order_map_[new_order.order_id_] = order_pos;
-            // notify level price change
         }
     } else {
         int original_qty = new_order.quantity_;
         while (new_order.quantity_ != 0 &&
                new_order.price_ <= bids_.begin()->first) {
-            auto matchedOrders = bids_.begin()->second.matchOrder(new_order);
+            auto matched_orders = bids_.begin()->second.matchOrder(new_order);
 
-            int32_t level_price_change = 0;
-            for (const OrderQuantity& order_quantity : matchedOrders) {
-                level_price_change += order_quantity.quantity_;
-                // notify matched trade
+            int32_t level_qty_change = 0;
+            for (const MatchedOrder& matched_order : matched_orders) {
+                level_qty_change -= matched_order.quantity_;
+                matched_order_buffer_->write(matched_order);
+
+                if (matched_order.match_full_) {
+                    order_map_.erase(matched_order.order_id_);
+                }
             }
 
-            // send L2 data
+            l2_data_buffer_->write(
+                L2Data{.instrument_id_ = new_order.instrument_id_,
+                       .price_level_ = bids_.begin()->first,
+                       .quantity_ = level_qty_change,
+                       .side_ = OrderSide::Buy});
 
             if (bids_.begin()->second.isEmpty()) {
                 bids_.erase(bids_.begin());
             }
         }
 
-        if (new_order.quantity_ != original_qty) {
-            // notify matched order
-        }
-
         if (new_order.quantity_ != 0) {
             auto order_pos = asks_[new_order.price_].push(new_order);
             order_map_[new_order.order_id_] = order_pos;
-            // notify level price change
         }
+    }
+
+    if (new_order.quantity_ != original_qty) {
+        matched_order_buffer_->write(MatchedOrder(
+            new_order.order_id_, original_qty - new_order.quantity_,
+            new_order.quantity_ == 0));
+    }
+
+    if (new_order.quantity_ != 0) {
+        l2_data_buffer_->write(
+            L2Data{.instrument_id_ = new_order.instrument_id_,
+                   .price_level_ = new_order.price_,
+                   .quantity_ = new_order.quantity_,
+                   .side_ = new_order.side_});
     }
 }
 
@@ -131,6 +158,22 @@ void OrderMatcher::start() {
     while (true) {
         if (!order_buffer_->canRead()) continue;
         Order new_order = order_buffer_->read();
+        if (instrument_matcher_.find(new_order.instrument_id_) ==
+            instrument_matcher_.end()) {
+            instrument_matcher_.emplace(
+                new_order.instrument_id_,
+                InstrumentOrderMatcher(l2_data_buffer_, matched_order_buffer_));
+        }
+
         instrument_matcher_[new_order.instrument_id_].handleOrder(new_order);
     }
 }
+
+OrderMatcher::OrderMatcher(
+    std::shared_ptr<SPSC<Order, 1 << 15>> order_buffer,
+    std::shared_ptr<SPSC<L2Data, 1 << 15>> l2_data_buffer,
+    std::shared_ptr<SPSC<MatchedOrder, 1 << 15>> matched_order_buffer)
+    : order_buffer_(order_buffer),
+      l2_data_buffer_(l2_data_buffer),
+      matched_order_buffer_(matched_order_buffer) {}
+
