@@ -7,7 +7,7 @@
 
 #include "matching/L2Data.hpp"
 #include "matching/Order.hpp"
-#include "matching/OrderBuffer.hpp"
+#include "matching/SPSC.hpp"
 class InstrumentOrderMatcher {
    public:
     InstrumentOrderMatcher(

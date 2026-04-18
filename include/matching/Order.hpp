@@ -26,5 +26,5 @@ struct alignas(64) MatchedOrder {
     int8_t quantity_;
     bool match_full_;
 
-    int8_t sequence_id_;
+    int64_t sequence_id_;
 };

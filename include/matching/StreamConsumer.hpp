@@ -2,15 +2,17 @@
 
 #include <memory>
 
-#include "matching/OrderBuffer.hpp"
+#include "matching/Order.hpp"
+#include "matching/SPSC.hpp"
 class StreamConsumer {
    public:
     StreamConsumer(std::shared_ptr<SPSC<Order, 1 << 15>> order_buffer);
+    ~StreamConsumer();
+
     void start();
 
    private:
-    ~StreamConsumer();
     std::shared_ptr<SPSC<Order, 1 << 15>> order_buffer_;
-    int server_fd_;
-    int client_fd_;
+    int server_fd_ = -1;
+    int client_fd_ =-1;
 };
