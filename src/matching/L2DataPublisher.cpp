@@ -9,6 +9,10 @@
 #include <stdexcept>
 #include <string>
 
+#include "matching/sbe/L2Data.h"
+#include "matching/sbe/MessageHeader.h"
+#include "matching/sbe/SideEnum.h"
+
 L2DataPublisher::L2DataPublisher(
     std::shared_ptr<SPSC<L2Data, 1 << 15>> l2_data_buffer)
     : l2_data_buffer_(l2_data_buffer) {}
@@ -51,13 +55,26 @@ void L2DataPublisher::start() {
     int64_t sequence_id_count =
         std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch())
             .count();
+    constexpr int buffer_size =
+        sbe::L2Data::SBE_BLOCK_LENGTH + sbe::MessageHeader::encodedLength();
+    char buffer[buffer_size];
+    sbe::MessageHeader hdr;
+    sbe::L2Data l2_data_wrapper;
+    hdr.wrap(buffer, 0, 0, buffer_size);
+    l2_data_wrapper.wrapForEncode(buffer, sbe::MessageHeader::encodedLength(),
+                                  buffer_size);
+
     while (true) {
         if (!l2_data_buffer_->canRead()) continue;
         L2Data l2_data = l2_data_buffer_->read();
-        l2_data.sequence_id_ = sequence_id_count++;
+        l2_data_wrapper.instrumentId(l2_data.instrument_id_)
+            .price_level(l2_data.price_level_)
+            .quantity(l2_data.quantity_)
+            .side(static_cast<sbe::SideEnum::Value>(l2_data.side_))
+            .sequenceId(sequence_id_count++);
 
         auto err =
-            sendto(server_fd_, &l2_data, sizeof(l2_data), 0,
+            sendto(server_fd_, buffer, buffer_size, 0,
                    (struct sockaddr*)&multicast_addr_, sizeof(multicast_addr_));
         if (err < 0) {
             throw std::runtime_error("UDP send err: " + std::to_string(err));

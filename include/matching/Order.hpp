@@ -2,18 +2,18 @@
 
 #include <cstdint>
 
-enum OrderSide { Buy, Sell };
+enum OrderSide { Buy = 0, Sell };
 
-enum OrderType { Limit, Market };
+enum OrderType { Limit = 0, Market };
 
-enum OrderAction { Create, Modify, Cancel };
+enum OrderAction { Create = 0, Modify, Cancel };
 
 struct alignas(64) Order {
-    int8_t order_id_;
-    int8_t timestamp_;
-    int8_t price_;
-    int8_t quantity_;
-    int8_t instrument_id_;
+    uint8_t order_id_;
+    uint8_t timestamp_;
+    uint8_t price_;
+    uint8_t quantity_;
+    uint8_t instrument_id_;
     OrderSide side_;
     OrderType type_;
     OrderAction action_;

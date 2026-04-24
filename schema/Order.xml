@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe"
+        xmlns:xi="http://www.w3.org/2001/XInclude"
+package="sbe" 
+                   id="1" 
+                   version="1"
+                   semanticVersion="1.0"
+                   description="Matching Engine Gateway Protocol"
+byteOrder="littleEndian"> 
+        
+    <xi:include href="Common.xml"/>
+
+    <message name="NewOrder" id="100" description="New Order Single">
+        <field name="orderId" id="1" type="uint8"/>
+        <field name="timestamp" id="2" type="uint8"/>
+        <field name="price" id="3" type="uint8"/>
+        <field name="quantity" id="4" type="uint8"/>
+        <field name="instrumentId" id="5" type="uint8"/>
+        <field name="side" id="6" type="SideEnum"/>
+        <field name="type" id="7" type="TypeEnum"/>
+        <field name="action" id="8" type="ActionEnum"/>
+    </message>
+</sbe:messageSchema>
+

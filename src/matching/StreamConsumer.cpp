@@ -11,13 +11,15 @@
 
 #include "matching/BytesBuffer.hpp"
 #include "matching/Order.hpp"
+#include "matching/sbe/NewOrder.h"
 
 StreamConsumer::StreamConsumer(
     std::shared_ptr<SPSC<Order, 1 << 15>> order_buffer)
     : order_buffer_(order_buffer) {}
 
 void StreamConsumer::start() {
-    BytesBuffer<Order, 1 << 15> byte_buffer;
+    BytesBuffer<sbe::NewOrder, sbe::NewOrder::SBE_BLOCK_LENGTH, 1 << 15>
+        byte_buffer;
 
     server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd_ < 0) {
@@ -55,12 +57,30 @@ void StreamConsumer::start() {
 
     fcntl(client_fd_, F_SETFL, O_NONBLOCK);
     char buffer[1 << 15];
+    sbe::MessageHeader hdr;
     while (true) {
         ssize_t bytes = recv(client_fd_, buffer, sizeof(buffer), 0);
         if (bytes > 0) {
             byte_buffer.write(buffer, bytes);
             while (byte_buffer.canRead()) {
-                order_buffer_->write(byte_buffer.read());
+                hdr.wrap(byte_buffer.front(), 0, 0, byte_buffer.CAPACITY);
+                assert(hdr.version() == sbe::NewOrder::SBE_SCHEMA_VERSION);
+
+                sbe::NewOrder buffer_order;
+                buffer_order.wrapForDecode(buffer, hdr.encodedLength(),
+                                           hdr.blockLength(), hdr.version(),
+                                           byte_buffer.CAPACITY);
+
+                order_buffer_->write(Order{
+                    .order_id_ = buffer_order.orderId(),
+                    .timestamp_ = buffer_order.timestamp(),
+                    .price_ = buffer_order.price(),
+                    .quantity_ = buffer_order.quantity(),
+                    .instrument_id_ = buffer_order.instrumentId(),
+                    .side_ = OrderSide(buffer_order.side()),
+                    .type_ = OrderType(buffer_order.type()),
+                    .action_ = OrderAction(buffer_order.action()),
+                });
             }
         } else {
             continue;

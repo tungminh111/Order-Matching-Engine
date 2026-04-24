@@ -4,7 +4,7 @@ project(matching_app)               # Create project "simple_example"
 set(CMAKE_CXX_COMPILER "/opt/homebrew/opt/llvm/bin/clang++")
 set(CMAKE_C_COMPILER "/opt/homebrew/opt/llvm/bin/clang")
 
-set(CMAKE_CXX_STANDARD 20)            # Enable c++14 standard
+set(CMAKE_CXX_STANDARD 26)            # Enable c++14 standard
 
 set(
 	CMAKE_EXPORT_COMPILE_COMMANDS
