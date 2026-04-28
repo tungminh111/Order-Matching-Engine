@@ -11,6 +11,7 @@
 
 #include "matching/BytesBuffer.hpp"
 #include "matching/Order.hpp"
+#include "matching/sbe/MessageHeader.h"
 #include "matching/sbe/NewOrder.h"
 
 StreamConsumer::StreamConsumer(
@@ -18,7 +19,10 @@ StreamConsumer::StreamConsumer(
     : order_buffer_(order_buffer) {}
 
 void StreamConsumer::start() {
-    BytesBuffer<sbe::NewOrder, sbe::NewOrder::SBE_BLOCK_LENGTH, 1 << 15>
+    BytesBuffer<sbe::NewOrder,
+                sbe::MessageHeader::encodedLength() +
+                    sbe::NewOrder::SBE_BLOCK_LENGTH,
+                1 << 15>
         byte_buffer;
 
     server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
@@ -58,7 +62,7 @@ void StreamConsumer::start() {
     fcntl(client_fd_, F_SETFL, O_NONBLOCK);
     char buffer[1 << 15];
     sbe::MessageHeader hdr;
-    while (true) {
+    while (!stopped) {
         ssize_t bytes = recv(client_fd_, buffer, sizeof(buffer), 0);
         if (bytes > 0) {
             byte_buffer.write(buffer, bytes);
@@ -81,6 +85,8 @@ void StreamConsumer::start() {
                     .type_ = OrderType(buffer_order.type()),
                     .action_ = OrderAction(buffer_order.action()),
                 });
+
+                byte_buffer.pop();
             }
         } else {
             continue;
@@ -93,3 +99,5 @@ StreamConsumer::~StreamConsumer() {
     if (client_fd_ != -1) close(client_fd_);
     std::cout << "StreamConsumer stop successfully" << std::endl;
 }
+
+void StreamConsumer::stop() { stopped = true; }

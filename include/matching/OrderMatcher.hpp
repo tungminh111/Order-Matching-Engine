@@ -4,6 +4,7 @@
 #include <map>
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 #include "matching/L2Data.hpp"
 #include "matching/Order.hpp"

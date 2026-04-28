@@ -8,19 +8,19 @@ class SPSC {
     SPSC() {};
     void write(T order) {
         // assuming capacity never reached
-        buffer_[last & (capacity - 1)] = order;
-        last += 1;
+        buffer_[last_ & (capacity - 1)] = order;
+        last_ += 1;
     }
 
     T read() {
-        T ret = buffer_[first & (capacity - 1)];
-        first += 1;
+        T ret = buffer_[first_ & (capacity - 1)];
+        first_ += 1;
         return ret;
     }
 
-    bool canRead() { return first < last; }
+    bool canRead() { return first_ < last_; }
 
    private:
     std::array<T, capacity> buffer_;
-    alignas(64) std::atomic<int> first{0}, last{0};
+    alignas(64) std::atomic<int> first_{0}, last_{0};
 };

@@ -15,8 +15,8 @@ template <class T, size_t T_size, size_t capacity>
 class BytesBuffer {
    public:
     BytesBuffer() {
-        int page_size = _SC_PAGE_SIZE;
-        static_assert(capacity % page_size == 0);
+        int page_size = sysconf(_SC_PAGE_SIZE);
+        assert(capacity % page_size == 0);
 
         int fd = shm_open("/byte_buffer", O_RDWR | O_CREAT | O_EXCL, 0600);
         if (fd == -1) {

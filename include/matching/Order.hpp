@@ -17,6 +17,8 @@ struct alignas(64) Order {
     OrderSide side_;
     OrderType type_;
     OrderAction action_;
+
+    bool operator==(const Order&) const = default;
 };
 
 struct alignas(64) MatchedOrder {

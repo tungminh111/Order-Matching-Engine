@@ -66,6 +66,7 @@ void InstrumentOrderMatcher::handleOrder(Order new_order) {
 
 void InstrumentOrderMatcher::addOrder(Order new_order) {
     int original_qty = new_order.quantity_;
+    //TODO: handler MARKET order
     if (new_order.side_ == OrderSide::Buy) {
         while (new_order.quantity_ != 0 &&
                new_order.price_ >= asks_.begin()->first) {

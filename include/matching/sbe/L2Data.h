@@ -339,19 +339,19 @@ public:
         return 0;
     }
 
-    static SBE_CONSTEXPR std::int8_t instrumentIdNullValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint8_t instrumentIdNullValue() SBE_NOEXCEPT
     {
-        return SBE_NULLVALUE_INT8;
+        return SBE_NULLVALUE_UINT8;
     }
 
-    static SBE_CONSTEXPR std::int8_t instrumentIdMinValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint8_t instrumentIdMinValue() SBE_NOEXCEPT
     {
-        return static_cast<std::int8_t>(-127);
+        return static_cast<std::uint8_t>(0);
     }
 
-    static SBE_CONSTEXPR std::int8_t instrumentIdMaxValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint8_t instrumentIdMaxValue() SBE_NOEXCEPT
     {
-        return static_cast<std::int8_t>(127);
+        return static_cast<std::uint8_t>(254);
     }
 
     static SBE_CONSTEXPR std::size_t instrumentIdEncodingLength() SBE_NOEXCEPT
@@ -359,17 +359,17 @@ public:
         return 1;
     }
 
-    SBE_NODISCARD std::int8_t instrumentId() const SBE_NOEXCEPT
+    SBE_NODISCARD std::uint8_t instrumentId() const SBE_NOEXCEPT
     {
-        std::int8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 0, sizeof(std::int8_t));
+        std::uint8_t val;
+        std::memcpy(&val, m_buffer + m_offset + 0, sizeof(std::uint8_t));
         return (val);
     }
 
-    L2Data &instrumentId(const std::int8_t value) SBE_NOEXCEPT
+    L2Data &instrumentId(const std::uint8_t value) SBE_NOEXCEPT
     {
-        std::int8_t val = (value);
-        std::memcpy(m_buffer + m_offset + 0, &val, sizeof(std::int8_t));
+        std::uint8_t val = (value);
+        std::memcpy(m_buffer + m_offset + 0, &val, sizeof(std::uint8_t));
         return *this;
     }
 
@@ -402,19 +402,19 @@ public:
         return 1;
     }
 
-    static SBE_CONSTEXPR std::int8_t price_levelNullValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint8_t price_levelNullValue() SBE_NOEXCEPT
     {
-        return SBE_NULLVALUE_INT8;
+        return SBE_NULLVALUE_UINT8;
     }
 
-    static SBE_CONSTEXPR std::int8_t price_levelMinValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint8_t price_levelMinValue() SBE_NOEXCEPT
     {
-        return static_cast<std::int8_t>(-127);
+        return static_cast<std::uint8_t>(0);
     }
 
-    static SBE_CONSTEXPR std::int8_t price_levelMaxValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint8_t price_levelMaxValue() SBE_NOEXCEPT
     {
-        return static_cast<std::int8_t>(127);
+        return static_cast<std::uint8_t>(254);
     }
 
     static SBE_CONSTEXPR std::size_t price_levelEncodingLength() SBE_NOEXCEPT
@@ -422,17 +422,17 @@ public:
         return 1;
     }
 
-    SBE_NODISCARD std::int8_t price_level() const SBE_NOEXCEPT
+    SBE_NODISCARD std::uint8_t price_level() const SBE_NOEXCEPT
     {
-        std::int8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 1, sizeof(std::int8_t));
+        std::uint8_t val;
+        std::memcpy(&val, m_buffer + m_offset + 1, sizeof(std::uint8_t));
         return (val);
     }
 
-    L2Data &price_level(const std::int8_t value) SBE_NOEXCEPT
+    L2Data &price_level(const std::uint8_t value) SBE_NOEXCEPT
     {
-        std::int8_t val = (value);
-        std::memcpy(m_buffer + m_offset + 1, &val, sizeof(std::int8_t));
+        std::uint8_t val = (value);
+        std::memcpy(m_buffer + m_offset + 1, &val, sizeof(std::uint8_t));
         return *this;
     }
 
