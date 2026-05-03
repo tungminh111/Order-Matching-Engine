@@ -3,6 +3,7 @@ enable_testing()
 add_executable(
     engine_tests
     StreamConsumerTest.cpp
+    OrderMatcherTest.cpp
 )
 
 target_link_libraries(

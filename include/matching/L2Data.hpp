@@ -6,4 +6,6 @@ struct alignas(64) L2Data {
     uint8_t price_level_;
     int32_t quantity_;
     OrderSide side_;
+
+    bool operator==(const L2Data&) const = default;
 };

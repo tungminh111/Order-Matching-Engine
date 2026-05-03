@@ -1,11 +1,13 @@
 #include "matching/OrderMatcher.hpp"
 
+#include <limits>
+
 #include "matching/L2Data.hpp"
 #include "matching/Order.hpp"
 
 InstrumentOrderMatcher::InstrumentOrderMatcher(
-    std::shared_ptr<SPSC<L2Data, 1 << 15>> l2_data_buffer,
-    std::shared_ptr<SPSC<MatchedOrder, 1 << 15>> matched_order_buffer)
+    std::shared_ptr<DefaultSPSC<L2Data>> l2_data_buffer,
+    std::shared_ptr<DefaultSPSC<MatchedOrder>> matched_order_buffer)
     : l2_data_buffer_(l2_data_buffer),
       matched_order_buffer_(matched_order_buffer) {}
 
@@ -53,7 +55,7 @@ void InstrumentOrderMatcher::handleOrder(Order new_order) {
     } else if (new_order.action_ == OrderAction::Cancel) {
         removeOrder(new_order.order_id_);
     } else {
-        std::list<Order>::iterator order_pos = order_map_[new_order.order_id_];
+        std::list<Order>::iterator order_pos = order_map_.at(new_order.order_id_);
         if (new_order.price_ == order_pos->price_ &&
             new_order.quantity_ < order_pos->quantity_) {
             order_pos->quantity_ = new_order.quantity_;
@@ -65,8 +67,17 @@ void InstrumentOrderMatcher::handleOrder(Order new_order) {
 }
 
 void InstrumentOrderMatcher::addOrder(Order new_order) {
-    int original_qty = new_order.quantity_;
-    //TODO: handler MARKET order
+    uint8_t original_qty = new_order.quantity_;
+
+    if (new_order.type_ == OrderType::Market) {
+        if (new_order.side_ == OrderSide::Buy) {
+            new_order.price_ =
+                std::numeric_limits<typeof(new_order.price_)>::max();
+        } else {
+            new_order.price_ =
+                std::numeric_limits<typeof(new_order.price_)>::min();
+        }
+    }
     if (new_order.side_ == OrderSide::Buy) {
         while (new_order.quantity_ != 0 &&
                new_order.price_ >= asks_.begin()->first) {
@@ -93,9 +104,9 @@ void InstrumentOrderMatcher::addOrder(Order new_order) {
             }
         }
 
-        if (new_order.quantity_ != 0) {
-            auto order_pos = bids_[new_order.price_].push(new_order);
-            order_map_[new_order.order_id_] = order_pos;
+        if (new_order.quantity_ != 0 && new_order.type_ == OrderType::Limit) {
+            auto order_pos = bids_.at(new_order.price_).push(new_order);
+            order_map_.at(new_order.order_id_) = order_pos;
         }
     } else {
         int original_qty = new_order.quantity_;
@@ -124,19 +135,23 @@ void InstrumentOrderMatcher::addOrder(Order new_order) {
             }
         }
 
-        if (new_order.quantity_ != 0) {
-            auto order_pos = asks_[new_order.price_].push(new_order);
-            order_map_[new_order.order_id_] = order_pos;
+        if (new_order.quantity_ != 0 && new_order.type_ == OrderType::Limit) {
+            auto order_pos = asks_.at(new_order.price_).push(new_order);
+            order_map_.at(new_order.order_id_) = order_pos;
         }
     }
 
     if (new_order.quantity_ != original_qty) {
-        matched_order_buffer_->write(MatchedOrder(
-            new_order.order_id_, original_qty - new_order.quantity_,
-            new_order.quantity_ == 0));
+        matched_order_buffer_->write(MatchedOrder{
+            .order_id_ = new_order.order_id_,
+            .quantity_ =
+                static_cast<uint8_t>(original_qty - new_order.quantity_),
+            .match_full_ = new_order.quantity_ == 0
+
+        });
     }
 
-    if (new_order.quantity_ != 0) {
+    if (new_order.quantity_ != 0 && new_order.type_ == OrderType::Limit) {
         l2_data_buffer_->write(
             L2Data{.instrument_id_ = new_order.instrument_id_,
                    .price_level_ = new_order.price_,
@@ -146,17 +161,17 @@ void InstrumentOrderMatcher::addOrder(Order new_order) {
 }
 
 void InstrumentOrderMatcher::removeOrder(int order_id) {
-    std::list<Order>::iterator order_pos = order_map_[order_id];
+    std::list<Order>::iterator order_pos = order_map_.at(order_id);
     if (order_pos->side_ == OrderSide::Buy) {
-        bids_[order_pos->price_].erase(order_pos);
+        bids_.at(order_pos->price_).erase(order_pos);
     } else {
-        asks_[order_pos->price_].erase(order_pos);
+        asks_.at(order_pos->price_).erase(order_pos);
     }
     order_map_.erase(order_id);
 }
 
 void OrderMatcher::start() {
-    while (true) {
+    while (!stopped) {
         if (!order_buffer_->canRead()) continue;
         Order new_order = order_buffer_->read();
         if (instrument_matcher_.find(new_order.instrument_id_) ==
@@ -166,15 +181,16 @@ void OrderMatcher::start() {
                 InstrumentOrderMatcher(l2_data_buffer_, matched_order_buffer_));
         }
 
-        instrument_matcher_[new_order.instrument_id_].handleOrder(new_order);
+        instrument_matcher_.at(new_order.instrument_id_).handleOrder(new_order);
     }
 }
 
 OrderMatcher::OrderMatcher(
-    std::shared_ptr<SPSC<Order, 1 << 15>> order_buffer,
-    std::shared_ptr<SPSC<L2Data, 1 << 15>> l2_data_buffer,
-    std::shared_ptr<SPSC<MatchedOrder, 1 << 15>> matched_order_buffer)
+    std::shared_ptr<DefaultSPSC<Order>> order_buffer,
+    std::shared_ptr<DefaultSPSC<L2Data>> l2_data_buffer,
+    std::shared_ptr<DefaultSPSC<MatchedOrder>> matched_order_buffer)
     : order_buffer_(order_buffer),
       l2_data_buffer_(l2_data_buffer),
       matched_order_buffer_(matched_order_buffer) {}
 
+void OrderMatcher::stop() { stopped = false; }

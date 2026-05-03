@@ -22,11 +22,11 @@ struct alignas(64) Order {
 };
 
 struct alignas(64) MatchedOrder {
-    MatchedOrder(int8_t order_id, int8_t quantity, bool match_full)
-        : order_id_(order_id), quantity_(quantity), match_full_(match_full) {}
-    int8_t order_id_;
-    int8_t quantity_;
+    uint8_t order_id_;
+    uint8_t quantity_;
     bool match_full_;
 
-    int64_t sequence_id_;
+    uint64_t sequence_id_;
+
+    bool operator==(const MatchedOrder&) const = default;
 };

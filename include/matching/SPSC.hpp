@@ -24,3 +24,6 @@ class SPSC {
     std::array<T, capacity> buffer_;
     alignas(64) std::atomic<int> first_{0}, last_{0};
 };
+
+template <class T>
+using DefaultSPSC = SPSC<T, 1 << 15>;

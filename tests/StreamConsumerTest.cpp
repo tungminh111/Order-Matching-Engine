@@ -70,8 +70,8 @@ class TestClient {
 };
 
 TEST(StreamConsumerTest, HappyCase) {
-    std::shared_ptr<SPSC<Order, 1 << 15>> order_buffer =
-        std::make_shared<SPSC<Order, 1 << 15>>();
+    std::shared_ptr<DefaultSPSC<Order>> order_buffer =
+        std::make_shared<DefaultSPSC<Order>>();
 
     StreamConsumer consumer(order_buffer);
     std::thread consumer_thread(&StreamConsumer::start, &consumer);
