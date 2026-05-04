@@ -48,13 +48,13 @@ TEST(OrderMatcherTest, HappyCase) {
             .side_ = OrderSide::Sell,
         },
         {
-            .price_level_ = 151,
-            .quantity_ = -50,
+            .price_level_ = 150,
+            .quantity_ = -100,
             .side_ = OrderSide::Sell,
         },
         {
-            .price_level_ = 150,
-            .quantity_ = -100,
+            .price_level_ = 151,
+            .quantity_ = -50,
             .side_ = OrderSide::Sell,
         },
     };
@@ -101,8 +101,17 @@ TEST(OrderMatcherTest, HappyCase) {
     std::vector<L2Data> result_l2_data;
     std::vector<MatchedOrder> result_match_orders;
 
-    ASSERT_EQ(expect_l2s.size(), result_l2_data.size());
-    ASSERT_EQ(expect_matches.size(), result_match_orders.size());
+    while (result_l2_data.size() != expect_l2s.size() ||
+           result_match_orders.size() != expect_matches.size()) {
+        if (l2_buffer->canRead()) result_l2_data.push_back(l2_buffer->read());
+        if (match_order_buffer->canRead())
+            result_match_orders.push_back(match_order_buffer->read());
+    }
+
+    order_matcher.stop();
+    order_matcher_thread.join();
+    order_producer_thread.join();
+
     for (int i = 0; i < expect_l2s.size(); ++i) {
         ASSERT_EQ(expect_l2s[i], result_l2_data[i]);
     }

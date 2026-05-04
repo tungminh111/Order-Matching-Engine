@@ -55,7 +55,8 @@ void InstrumentOrderMatcher::handleOrder(Order new_order) {
     } else if (new_order.action_ == OrderAction::Cancel) {
         removeOrder(new_order.order_id_);
     } else {
-        std::list<Order>::iterator order_pos = order_map_.at(new_order.order_id_);
+        std::list<Order>::iterator order_pos =
+            order_map_.at(new_order.order_id_);
         if (new_order.price_ == order_pos->price_ &&
             new_order.quantity_ < order_pos->quantity_) {
             order_pos->quantity_ = new_order.quantity_;
@@ -67,8 +68,6 @@ void InstrumentOrderMatcher::handleOrder(Order new_order) {
 }
 
 void InstrumentOrderMatcher::addOrder(Order new_order) {
-    uint8_t original_qty = new_order.quantity_;
-
     if (new_order.type_ == OrderType::Market) {
         if (new_order.side_ == OrderSide::Buy) {
             new_order.price_ =
@@ -79,7 +78,7 @@ void InstrumentOrderMatcher::addOrder(Order new_order) {
         }
     }
     if (new_order.side_ == OrderSide::Buy) {
-        while (new_order.quantity_ != 0 &&
+        while (new_order.quantity_ != 0 && !asks_.empty() &&
                new_order.price_ >= asks_.begin()->first) {
             auto matched_orders = asks_.begin()->second.matchOrder(new_order);
 
@@ -91,6 +90,14 @@ void InstrumentOrderMatcher::addOrder(Order new_order) {
                 if (matched_order.match_full_) {
                     order_map_.erase(matched_order.order_id_);
                 }
+
+                matched_order_buffer_->write(MatchedOrder{
+                    .order_id_ = new_order.order_id_,
+                    .quantity_ = matched_order.quantity_,
+                    .match_full_ = (new_order.quantity_ == 0) &&
+                                   (matched_order.order_id_ ==
+                                    matched_orders.back().order_id_),
+                });
             }
 
             l2_data_buffer_->write(
@@ -105,12 +112,14 @@ void InstrumentOrderMatcher::addOrder(Order new_order) {
         }
 
         if (new_order.quantity_ != 0 && new_order.type_ == OrderType::Limit) {
+            if (!bids_.contains(new_order.price_)) {
+                bids_.emplace(new_order.price_, PriceLevel());
+            }
             auto order_pos = bids_.at(new_order.price_).push(new_order);
-            order_map_.at(new_order.order_id_) = order_pos;
+            order_map_.emplace(new_order.order_id_, order_pos);
         }
     } else {
-        int original_qty = new_order.quantity_;
-        while (new_order.quantity_ != 0 &&
+        while (new_order.quantity_ != 0 && !bids_.empty() &&
                new_order.price_ <= bids_.begin()->first) {
             auto matched_orders = bids_.begin()->second.matchOrder(new_order);
 
@@ -122,6 +131,14 @@ void InstrumentOrderMatcher::addOrder(Order new_order) {
                 if (matched_order.match_full_) {
                     order_map_.erase(matched_order.order_id_);
                 }
+
+                matched_order_buffer_->write(MatchedOrder{
+                    .order_id_ = new_order.order_id_,
+                    .quantity_ = matched_order.quantity_,
+                    .match_full_ = (new_order.quantity_ == 0) &&
+                                   (matched_order.order_id_ ==
+                                    matched_orders.back().order_id_),
+                });
             }
 
             l2_data_buffer_->write(
@@ -136,19 +153,12 @@ void InstrumentOrderMatcher::addOrder(Order new_order) {
         }
 
         if (new_order.quantity_ != 0 && new_order.type_ == OrderType::Limit) {
+            if (!asks_.contains(new_order.price_)) {
+                asks_.emplace(new_order.price_, PriceLevel());
+            }
             auto order_pos = asks_.at(new_order.price_).push(new_order);
-            order_map_.at(new_order.order_id_) = order_pos;
+            order_map_.emplace(new_order.order_id_, order_pos);
         }
-    }
-
-    if (new_order.quantity_ != original_qty) {
-        matched_order_buffer_->write(MatchedOrder{
-            .order_id_ = new_order.order_id_,
-            .quantity_ =
-                static_cast<uint8_t>(original_qty - new_order.quantity_),
-            .match_full_ = new_order.quantity_ == 0
-
-        });
     }
 
     if (new_order.quantity_ != 0 && new_order.type_ == OrderType::Limit) {
@@ -193,4 +203,4 @@ OrderMatcher::OrderMatcher(
       l2_data_buffer_(l2_data_buffer),
       matched_order_buffer_(matched_order_buffer) {}
 
-void OrderMatcher::stop() { stopped = false; }
+void OrderMatcher::stop() { stopped = true; }
