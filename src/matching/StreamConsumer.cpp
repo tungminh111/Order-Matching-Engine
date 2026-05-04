@@ -66,6 +66,7 @@ void StreamConsumer::start() {
         ssize_t bytes = recv(client_fd_, buffer, sizeof(buffer), 0);
         if (bytes > 0) {
             byte_buffer.write(buffer, bytes);
+            //TODO: add testcase where ring buffer need to reset
             while (byte_buffer.canRead()) {
                 hdr.wrap(byte_buffer.front(), 0, 0, byte_buffer.CAPACITY);
                 assert(hdr.version() == sbe::NewOrder::SBE_SCHEMA_VERSION);
