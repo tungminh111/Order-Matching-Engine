@@ -1,6 +1,7 @@
 #include "matching/OrderMatcher.hpp"
 
 #include <limits>
+#include <stdexcept>
 
 #include "matching/L2Data.hpp"
 #include "matching/Order.hpp"
@@ -55,10 +56,19 @@ void InstrumentOrderMatcher::handleOrder(Order new_order) {
     } else if (new_order.action_ == OrderAction::Cancel) {
         removeOrder(new_order.order_id_);
     } else {
+        if (!order_map_.contains(new_order.order_id_))
+            throw std::runtime_error("modify non exist order is not allowed");
         std::list<Order>::iterator order_pos =
             order_map_.at(new_order.order_id_);
+        if (new_order.price_ == 0) new_order.price_ = order_pos->price_;
         if (new_order.price_ == order_pos->price_ &&
             new_order.quantity_ < order_pos->quantity_) {
+            l2_data_buffer_->write(
+                L2Data{.instrument_id_ = new_order.instrument_id_,
+                       .price_level_ = order_pos->price_,
+                       .quantity_ = new_order.quantity_ - order_pos->quantity_,
+                       .side_ = order_pos->side_});
+
             order_pos->quantity_ = new_order.quantity_;
         } else {
             removeOrder(new_order.order_id_);
@@ -68,6 +78,8 @@ void InstrumentOrderMatcher::handleOrder(Order new_order) {
 }
 
 void InstrumentOrderMatcher::addOrder(Order new_order) {
+    if (order_map_.contains(new_order.order_id_))
+        throw std::runtime_error("adding duplicate order is not allowed");
     if (new_order.type_ == OrderType::Market) {
         if (new_order.side_ == OrderSide::Buy) {
             new_order.price_ =
@@ -171,11 +183,29 @@ void InstrumentOrderMatcher::addOrder(Order new_order) {
 }
 
 void InstrumentOrderMatcher::removeOrder(int order_id) {
-    std::list<Order>::iterator order_pos = order_map_.at(order_id);
+    auto it = order_map_.find(order_id);
+    if (it == order_map_.end()) {
+        throw std::runtime_error("fail to remove non exist order");
+    }
+
+    std::list<Order>::iterator order_pos = it->second;
+    l2_data_buffer_->write(L2Data{.instrument_id_ = order_pos->instrument_id_,
+                                  .price_level_ = order_pos->price_,
+                                  .quantity_ = -order_pos->quantity_,
+                                  .side_ = order_pos->side_});
+
     if (order_pos->side_ == OrderSide::Buy) {
-        bids_.at(order_pos->price_).erase(order_pos);
+        auto it = bids_.find(order_pos->price_);
+        it->second.erase(order_pos);
+        if (it->second.isEmpty()) {
+            bids_.erase(it);
+        }
     } else {
-        asks_.at(order_pos->price_).erase(order_pos);
+        auto it = asks_.find(order_pos->price_);
+        it->second.erase(order_pos);
+        if (it->second.isEmpty()) {
+            asks_.erase(it);
+        }
     }
     order_map_.erase(order_id);
 }

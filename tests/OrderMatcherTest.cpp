@@ -9,10 +9,50 @@
 #include "matching/OrderMatcher.hpp"
 #include "matching/SPSC.hpp"
 
-TEST(OrderMatcherTest, HappyCase) {
-    std::shared_ptr<SPSC<Order, 1 << 15>> order_buffer =
-        std::make_shared<SPSC<Order, 1 << 15>>();
+void TestOrderMatcherSingleCase(std::vector<Order> orders,
+                                std::vector<L2Data> expect_l2s,
+                                std::vector<MatchedOrder> expect_matches
 
+) {
+    auto input_order_buffer = std::make_shared<DefaultSPSC<Order>>();
+    auto l2_buffer = std::make_shared<DefaultSPSC<L2Data>>();
+    auto match_order_buffer = std::make_shared<DefaultSPSC<MatchedOrder>>();
+
+    auto order_producer = [&]() {
+        for (auto order : orders) {
+            input_order_buffer->write(order);
+        }
+    };
+
+    std::thread order_producer_thread(order_producer);
+
+    OrderMatcher order_matcher(input_order_buffer, l2_buffer,
+                               match_order_buffer);
+    std::thread order_matcher_thread(&OrderMatcher::start, &order_matcher);
+
+    std::vector<L2Data> result_l2_data;
+    std::vector<MatchedOrder> result_match_orders;
+
+    while (result_l2_data.size() != expect_l2s.size() ||
+           result_match_orders.size() != expect_matches.size()) {
+        if (l2_buffer->canRead()) result_l2_data.push_back(l2_buffer->read());
+        if (match_order_buffer->canRead())
+            result_match_orders.push_back(match_order_buffer->read());
+    }
+
+    order_matcher.stop();
+    order_matcher_thread.join();
+    order_producer_thread.join();
+
+    for (int i = 0; i < expect_l2s.size(); ++i) {
+        ASSERT_EQ(expect_l2s[i], result_l2_data[i]);
+    }
+    for (int i = 0; i < expect_matches.size(); ++i) {
+        ASSERT_EQ(expect_matches[i], result_match_orders[i]);
+    }
+}
+
+TEST(OrderMatcherTest, MarketOrderPartialFilled) {
     std::vector<Order> orders = {
         {
             .order_id_ = 1,
@@ -82,42 +122,207 @@ TEST(OrderMatcherTest, HappyCase) {
         },
     };
 
-    auto input_order_buffer = std::make_shared<DefaultSPSC<Order>>();
-    auto l2_buffer = std::make_shared<DefaultSPSC<L2Data>>();
-    auto match_order_buffer = std::make_shared<DefaultSPSC<MatchedOrder>>();
+    TestOrderMatcherSingleCase(orders, expect_l2s, expect_matches);
+}
 
-    auto order_producer = [&]() {
-        for (auto order : orders) {
-            input_order_buffer->write(order);
-        }
+TEST(OrderMatcherTest, ModifyOrder) {
+    std::vector<Order> orders = {
+        {
+            .order_id_ = 1,
+            .price_ = 150,
+            .quantity_ = 100,
+            .side_ = OrderSide::Buy,
+            .type_ = OrderType::Limit,
+            .action_ = OrderAction::Create,
+        },
+        {
+            .order_id_ = 2,
+            .price_ = 150,
+            .quantity_ = 100,
+            .side_ = OrderSide::Buy,
+            .type_ = OrderType::Limit,
+            .action_ = OrderAction::Create,
+        },
+        {
+            .order_id_ = 1,
+            .quantity_ = 50,
+            .action_ = OrderAction::Modify,
+        },
+        {
+            .order_id_ = 2,
+            .quantity_ = 150,
+            .action_ = OrderAction::Modify,
+        },
+        {
+            .order_id_ = 3,
+            .quantity_ = 200,
+            .side_ = OrderSide::Sell,
+            .type_ = OrderType::Market,
+            .action_ = OrderAction::Create,
+        },
     };
 
-    std::thread order_producer_thread(order_producer);
+    std::vector<L2Data> expect_l2s = {
+        {
+            .price_level_ = 150,
+            .quantity_ = 100,
+            .side_ = OrderSide::Buy,
+        },
+        {
+            .price_level_ = 150,
+            .quantity_ = 100,
+            .side_ = OrderSide::Buy,
+        },
+        {
+            .price_level_ = 150,
+            .quantity_ = -50,
+            .side_ = OrderSide::Buy,
+        },
+        {
+            .price_level_ = 150,
+            .quantity_ = -100,
+            .side_ = OrderSide::Buy,
+        },
+        {
+            .price_level_ = 150,
+            .quantity_ = 150,
+            .side_ = OrderSide::Buy,
+        },
+        {
+            .price_level_ = 150,
+            .quantity_ = -200,
+            .side_ = OrderSide::Buy,
+        },
+    };
 
-    OrderMatcher order_matcher(input_order_buffer, l2_buffer,
-                               match_order_buffer);
-    std::thread order_matcher_thread(&OrderMatcher::start, &order_matcher);
+    std::vector<MatchedOrder> expect_matches = {
+        {
+            .order_id_ = 1,
+            .quantity_ = 50,
+            .match_full_ = true,
+        },
+        {
+            .order_id_ = 3,
+            .quantity_ = 50,
+            .match_full_ = false,
+        },
+        {
+            .order_id_ = 2,
+            .quantity_ = 150,
+            .match_full_ = true,
+        },
+        {
+            .order_id_ = 3,
+            .quantity_ = 150,
+            .match_full_ = true,
+        },
+    };
 
-    std::vector<L2Data> result_l2_data;
-    std::vector<MatchedOrder> result_match_orders;
+    TestOrderMatcherSingleCase(orders, expect_l2s, expect_matches);
+}
 
-    while (result_l2_data.size() != expect_l2s.size() ||
-           result_match_orders.size() != expect_matches.size()) {
-        if (l2_buffer->canRead()) result_l2_data.push_back(l2_buffer->read());
-        if (match_order_buffer->canRead())
-            result_match_orders.push_back(match_order_buffer->read());
-    }
+TEST(OrderMatcherTest, GhostOrder) {
+    std::vector<Order> orders = {
+        {
+            .order_id_ = 1,
+            .price_ = 150,
+            .quantity_ = 100,
+            .side_ = OrderSide::Sell,
+            .type_ = OrderType::Limit,
+            .action_ = OrderAction::Create,
+        },
+        {
+            .order_id_ = 2,
+            .price_ = 151,
+            .quantity_ = 100,
+            .side_ = OrderSide::Sell,
+            .type_ = OrderType::Limit,
+            .action_ = OrderAction::Create,
+        },
+        {
+            .order_id_ = 3,
+            .price_ = 152,
+            .quantity_ = 100,
+            .side_ = OrderSide::Sell,
+            .type_ = OrderType::Limit,
+            .action_ = OrderAction::Create,
+        },
+        {
+            .order_id_ = 2,
+            .action_ = OrderAction::Cancel,
+        },
+        {
+            .order_id_ = 4,
+            .price_ = 152,
+            .quantity_ = 250,
+            .side_ = OrderSide::Buy,
+            .type_ = OrderType::Limit,
+            .action_ = OrderAction::Create,
+        },
+    };
 
-    order_matcher.stop();
-    order_matcher_thread.join();
-    order_producer_thread.join();
+    std::vector<L2Data> expect_l2s = {
+        {
+            .price_level_ = 150,
+            .quantity_ = 100,
+            .side_ = OrderSide::Sell,
+        },
+        {
+            .price_level_ = 151,
+            .quantity_ = 100,
+            .side_ = OrderSide::Sell,
+        },
+        {
+            .price_level_ = 152,
+            .quantity_ = 100,
+            .side_ = OrderSide::Sell,
+        },
+        {
+            .price_level_ = 151,
+            .quantity_ = -100,
+            .side_ = OrderSide::Sell,
+        },
+        {
+            .price_level_ = 150,
+            .quantity_ = -100,
+            .side_ = OrderSide::Sell,
+        },
+        {
+            .price_level_ = 152,
+            .quantity_ = -100,
+            .side_ = OrderSide::Sell,
+        },
+        {
+            .price_level_ = 152,
+            .quantity_ = 50,
+            .side_ = OrderSide::Buy,
+        },
+    };
 
-    for (int i = 0; i < expect_l2s.size(); ++i) {
-        ASSERT_EQ(expect_l2s[i], result_l2_data[i]);
-    }
-    for (int i = 0; i < expect_matches.size(); ++i) {
-        ASSERT_EQ(expect_matches[i], result_match_orders[i]);
-    }
+    std::vector<MatchedOrder> expect_matches = {
+        {
+            .order_id_ = 1,
+            .quantity_ = 100,
+            .match_full_ = true,
+        },
+        {
+            .order_id_ = 4,
+            .quantity_ = 100,
+            .match_full_ = false,
+        },
+        {
+            .order_id_ = 3,
+            .quantity_ = 100,
+            .match_full_ = true,
+        },
+        {
+            .order_id_ = 4,
+            .quantity_ = 100,
+            .match_full_ = false,
+        },
+    };
+
+    TestOrderMatcherSingleCase(orders, expect_l2s, expect_matches);
 }
 
 /**
