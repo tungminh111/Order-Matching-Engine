@@ -113,7 +113,7 @@ private:
     }
 
 public:
-    static constexpr std::uint16_t SBE_BLOCK_LENGTH = static_cast<std::uint16_t>(8);
+    static constexpr std::uint16_t SBE_BLOCK_LENGTH = static_cast<std::uint16_t>(36);
     static constexpr std::uint16_t SBE_TEMPLATE_ID = static_cast<std::uint16_t>(100);
     static constexpr std::uint16_t SBE_SCHEMA_ID = static_cast<std::uint16_t>(1);
     static constexpr std::uint16_t SBE_SCHEMA_VERSION = static_cast<std::uint16_t>(1);
@@ -171,7 +171,7 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeBlockLength() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(8);
+        return static_cast<std::uint16_t>(36);
     }
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t sbeBlockAndHeaderLength() SBE_NOEXCEPT
@@ -341,37 +341,37 @@ public:
         return 0;
     }
 
-    static SBE_CONSTEXPR std::uint8_t orderIdNullValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t orderIdNullValue() SBE_NOEXCEPT
     {
-        return SBE_NULLVALUE_UINT8;
+        return SBE_NULLVALUE_UINT64;
     }
 
-    static SBE_CONSTEXPR std::uint8_t orderIdMinValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t orderIdMinValue() SBE_NOEXCEPT
     {
-        return static_cast<std::uint8_t>(0);
+        return UINT64_C(0x0);
     }
 
-    static SBE_CONSTEXPR std::uint8_t orderIdMaxValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t orderIdMaxValue() SBE_NOEXCEPT
     {
-        return static_cast<std::uint8_t>(254);
+        return UINT64_C(0xfffffffffffffffe);
     }
 
     static SBE_CONSTEXPR std::size_t orderIdEncodingLength() SBE_NOEXCEPT
     {
-        return 1;
+        return 8;
     }
 
-    SBE_NODISCARD std::uint8_t orderId() const SBE_NOEXCEPT
+    SBE_NODISCARD std::uint64_t orderId() const SBE_NOEXCEPT
     {
-        std::uint8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 0, sizeof(std::uint8_t));
-        return (val);
+        std::uint64_t val;
+        std::memcpy(&val, m_buffer + m_offset + 0, sizeof(std::uint64_t));
+        return SBE_LITTLE_ENDIAN_ENCODE_64(val);
     }
 
-    NewOrder &orderId(const std::uint8_t value) SBE_NOEXCEPT
+    NewOrder &orderId(const std::uint64_t value) SBE_NOEXCEPT
     {
-        std::uint8_t val = (value);
-        std::memcpy(m_buffer + m_offset + 0, &val, sizeof(std::uint8_t));
+        std::uint64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
+        std::memcpy(m_buffer + m_offset + 0, &val, sizeof(std::uint64_t));
         return *this;
     }
 
@@ -401,40 +401,40 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::size_t timestampEncodingOffset() SBE_NOEXCEPT
     {
-        return 1;
+        return 8;
     }
 
-    static SBE_CONSTEXPR std::uint8_t timestampNullValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t timestampNullValue() SBE_NOEXCEPT
     {
-        return SBE_NULLVALUE_UINT8;
+        return SBE_NULLVALUE_UINT64;
     }
 
-    static SBE_CONSTEXPR std::uint8_t timestampMinValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t timestampMinValue() SBE_NOEXCEPT
     {
-        return static_cast<std::uint8_t>(0);
+        return UINT64_C(0x0);
     }
 
-    static SBE_CONSTEXPR std::uint8_t timestampMaxValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t timestampMaxValue() SBE_NOEXCEPT
     {
-        return static_cast<std::uint8_t>(254);
+        return UINT64_C(0xfffffffffffffffe);
     }
 
     static SBE_CONSTEXPR std::size_t timestampEncodingLength() SBE_NOEXCEPT
     {
-        return 1;
+        return 8;
     }
 
-    SBE_NODISCARD std::uint8_t timestamp() const SBE_NOEXCEPT
+    SBE_NODISCARD std::uint64_t timestamp() const SBE_NOEXCEPT
     {
-        std::uint8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 1, sizeof(std::uint8_t));
-        return (val);
+        std::uint64_t val;
+        std::memcpy(&val, m_buffer + m_offset + 8, sizeof(std::uint64_t));
+        return SBE_LITTLE_ENDIAN_ENCODE_64(val);
     }
 
-    NewOrder &timestamp(const std::uint8_t value) SBE_NOEXCEPT
+    NewOrder &timestamp(const std::uint64_t value) SBE_NOEXCEPT
     {
-        std::uint8_t val = (value);
-        std::memcpy(m_buffer + m_offset + 1, &val, sizeof(std::uint8_t));
+        std::uint64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
+        std::memcpy(m_buffer + m_offset + 8, &val, sizeof(std::uint64_t));
         return *this;
     }
 
@@ -464,40 +464,40 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::size_t priceEncodingOffset() SBE_NOEXCEPT
     {
-        return 2;
+        return 16;
     }
 
-    static SBE_CONSTEXPR std::uint8_t priceNullValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t priceNullValue() SBE_NOEXCEPT
     {
-        return SBE_NULLVALUE_UINT8;
+        return SBE_NULLVALUE_UINT64;
     }
 
-    static SBE_CONSTEXPR std::uint8_t priceMinValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t priceMinValue() SBE_NOEXCEPT
     {
-        return static_cast<std::uint8_t>(0);
+        return UINT64_C(0x0);
     }
 
-    static SBE_CONSTEXPR std::uint8_t priceMaxValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t priceMaxValue() SBE_NOEXCEPT
     {
-        return static_cast<std::uint8_t>(254);
+        return UINT64_C(0xfffffffffffffffe);
     }
 
     static SBE_CONSTEXPR std::size_t priceEncodingLength() SBE_NOEXCEPT
     {
-        return 1;
+        return 8;
     }
 
-    SBE_NODISCARD std::uint8_t price() const SBE_NOEXCEPT
+    SBE_NODISCARD std::uint64_t price() const SBE_NOEXCEPT
     {
-        std::uint8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 2, sizeof(std::uint8_t));
-        return (val);
+        std::uint64_t val;
+        std::memcpy(&val, m_buffer + m_offset + 16, sizeof(std::uint64_t));
+        return SBE_LITTLE_ENDIAN_ENCODE_64(val);
     }
 
-    NewOrder &price(const std::uint8_t value) SBE_NOEXCEPT
+    NewOrder &price(const std::uint64_t value) SBE_NOEXCEPT
     {
-        std::uint8_t val = (value);
-        std::memcpy(m_buffer + m_offset + 2, &val, sizeof(std::uint8_t));
+        std::uint64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
+        std::memcpy(m_buffer + m_offset + 16, &val, sizeof(std::uint64_t));
         return *this;
     }
 
@@ -527,40 +527,40 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::size_t quantityEncodingOffset() SBE_NOEXCEPT
     {
-        return 3;
+        return 24;
     }
 
-    static SBE_CONSTEXPR std::uint8_t quantityNullValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t quantityNullValue() SBE_NOEXCEPT
     {
-        return SBE_NULLVALUE_UINT8;
+        return SBE_NULLVALUE_UINT64;
     }
 
-    static SBE_CONSTEXPR std::uint8_t quantityMinValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t quantityMinValue() SBE_NOEXCEPT
     {
-        return static_cast<std::uint8_t>(0);
+        return UINT64_C(0x0);
     }
 
-    static SBE_CONSTEXPR std::uint8_t quantityMaxValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t quantityMaxValue() SBE_NOEXCEPT
     {
-        return static_cast<std::uint8_t>(254);
+        return UINT64_C(0xfffffffffffffffe);
     }
 
     static SBE_CONSTEXPR std::size_t quantityEncodingLength() SBE_NOEXCEPT
     {
-        return 1;
+        return 8;
     }
 
-    SBE_NODISCARD std::uint8_t quantity() const SBE_NOEXCEPT
+    SBE_NODISCARD std::uint64_t quantity() const SBE_NOEXCEPT
     {
-        std::uint8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 3, sizeof(std::uint8_t));
-        return (val);
+        std::uint64_t val;
+        std::memcpy(&val, m_buffer + m_offset + 24, sizeof(std::uint64_t));
+        return SBE_LITTLE_ENDIAN_ENCODE_64(val);
     }
 
-    NewOrder &quantity(const std::uint8_t value) SBE_NOEXCEPT
+    NewOrder &quantity(const std::uint64_t value) SBE_NOEXCEPT
     {
-        std::uint8_t val = (value);
-        std::memcpy(m_buffer + m_offset + 3, &val, sizeof(std::uint8_t));
+        std::uint64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
+        std::memcpy(m_buffer + m_offset + 24, &val, sizeof(std::uint64_t));
         return *this;
     }
 
@@ -590,7 +590,7 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::size_t instrumentIdEncodingOffset() SBE_NOEXCEPT
     {
-        return 4;
+        return 32;
     }
 
     static SBE_CONSTEXPR std::uint8_t instrumentIdNullValue() SBE_NOEXCEPT
@@ -616,14 +616,14 @@ public:
     SBE_NODISCARD std::uint8_t instrumentId() const SBE_NOEXCEPT
     {
         std::uint8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 4, sizeof(std::uint8_t));
+        std::memcpy(&val, m_buffer + m_offset + 32, sizeof(std::uint8_t));
         return (val);
     }
 
     NewOrder &instrumentId(const std::uint8_t value) SBE_NOEXCEPT
     {
         std::uint8_t val = (value);
-        std::memcpy(m_buffer + m_offset + 4, &val, sizeof(std::uint8_t));
+        std::memcpy(m_buffer + m_offset + 32, &val, sizeof(std::uint8_t));
         return *this;
     }
 
@@ -653,7 +653,7 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::size_t sideEncodingOffset() SBE_NOEXCEPT
     {
-        return 5;
+        return 33;
     }
 
     SBE_NODISCARD static SBE_CONSTEXPR std::size_t sideEncodingLength() SBE_NOEXCEPT
@@ -664,21 +664,21 @@ public:
     SBE_NODISCARD std::uint8_t sideRaw() const SBE_NOEXCEPT
     {
         std::uint8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 5, sizeof(std::uint8_t));
+        std::memcpy(&val, m_buffer + m_offset + 33, sizeof(std::uint8_t));
         return (val);
     }
 
     SBE_NODISCARD SideEnum::Value side() const
     {
         std::uint8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 5, sizeof(std::uint8_t));
+        std::memcpy(&val, m_buffer + m_offset + 33, sizeof(std::uint8_t));
         return SideEnum::get((val));
     }
 
     NewOrder &side(const SideEnum::Value value) SBE_NOEXCEPT
     {
         std::uint8_t val = (value);
-        std::memcpy(m_buffer + m_offset + 5, &val, sizeof(std::uint8_t));
+        std::memcpy(m_buffer + m_offset + 33, &val, sizeof(std::uint8_t));
         return *this;
     }
 
@@ -708,7 +708,7 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::size_t typeEncodingOffset() SBE_NOEXCEPT
     {
-        return 6;
+        return 34;
     }
 
     SBE_NODISCARD static SBE_CONSTEXPR std::size_t typeEncodingLength() SBE_NOEXCEPT
@@ -719,21 +719,21 @@ public:
     SBE_NODISCARD std::uint8_t typeRaw() const SBE_NOEXCEPT
     {
         std::uint8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 6, sizeof(std::uint8_t));
+        std::memcpy(&val, m_buffer + m_offset + 34, sizeof(std::uint8_t));
         return (val);
     }
 
     SBE_NODISCARD TypeEnum::Value type() const
     {
         std::uint8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 6, sizeof(std::uint8_t));
+        std::memcpy(&val, m_buffer + m_offset + 34, sizeof(std::uint8_t));
         return TypeEnum::get((val));
     }
 
     NewOrder &type(const TypeEnum::Value value) SBE_NOEXCEPT
     {
         std::uint8_t val = (value);
-        std::memcpy(m_buffer + m_offset + 6, &val, sizeof(std::uint8_t));
+        std::memcpy(m_buffer + m_offset + 34, &val, sizeof(std::uint8_t));
         return *this;
     }
 
@@ -763,7 +763,7 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::size_t actionEncodingOffset() SBE_NOEXCEPT
     {
-        return 7;
+        return 35;
     }
 
     SBE_NODISCARD static SBE_CONSTEXPR std::size_t actionEncodingLength() SBE_NOEXCEPT
@@ -774,21 +774,21 @@ public:
     SBE_NODISCARD std::uint8_t actionRaw() const SBE_NOEXCEPT
     {
         std::uint8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 7, sizeof(std::uint8_t));
+        std::memcpy(&val, m_buffer + m_offset + 35, sizeof(std::uint8_t));
         return (val);
     }
 
     SBE_NODISCARD ActionEnum::Value action() const
     {
         std::uint8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 7, sizeof(std::uint8_t));
+        std::memcpy(&val, m_buffer + m_offset + 35, sizeof(std::uint8_t));
         return ActionEnum::get((val));
     }
 
     NewOrder &action(const ActionEnum::Value value) SBE_NOEXCEPT
     {
         std::uint8_t val = (value);
-        std::memcpy(m_buffer + m_offset + 7, &val, sizeof(std::uint8_t));
+        std::memcpy(m_buffer + m_offset + 35, &val, sizeof(std::uint8_t));
         return *this;
     }
 

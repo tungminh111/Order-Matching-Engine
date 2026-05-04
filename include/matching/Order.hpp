@@ -9,10 +9,10 @@ enum OrderType { Limit = 0, Market };
 enum OrderAction { Create = 0, Modify, Cancel };
 
 struct alignas(64) Order {
-    uint8_t order_id_;
-    uint8_t timestamp_;
-    uint8_t price_;
-    uint8_t quantity_;
+    uint64_t order_id_;
+    uint64_t timestamp_;
+    uint64_t price_;
+    uint64_t quantity_;
     uint8_t instrument_id_;
     OrderSide side_;
     OrderType type_;
@@ -22,8 +22,8 @@ struct alignas(64) Order {
 };
 
 struct alignas(64) MatchedOrder {
-    uint8_t order_id_;
-    uint8_t quantity_;
+    uint64_t order_id_;
+    uint64_t quantity_;
     bool match_full_;
 
     uint64_t sequence_id_;

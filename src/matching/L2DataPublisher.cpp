@@ -14,7 +14,7 @@
 #include "matching/sbe/SideEnum.h"
 
 L2DataPublisher::L2DataPublisher(
-    std::shared_ptr<SPSC<L2Data, 1 << 15>> l2_data_buffer)
+    std::shared_ptr<DefaultSPSC<L2Data>> l2_data_buffer)
     : l2_data_buffer_(l2_data_buffer) {}
 
 void L2DataPublisher::start() {
@@ -68,7 +68,7 @@ void L2DataPublisher::start() {
         if (!l2_data_buffer_->canRead()) continue;
         L2Data l2_data = l2_data_buffer_->read();
         l2_data_wrapper.instrumentId(l2_data.instrument_id_)
-            .price_level(l2_data.price_level_)
+            .priceLevel(l2_data.price_level_)
             .quantity(l2_data.quantity_)
             .side(static_cast<sbe::SideEnum::Value>(l2_data.side_))
             .sequenceId(sequence_id_count++);

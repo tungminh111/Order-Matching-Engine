@@ -96,8 +96,8 @@ void StreamConsumer::start() {
 }
 
 StreamConsumer::~StreamConsumer() {
-    if (server_fd_ != -1) close(server_fd_);
-    if (client_fd_ != -1) close(client_fd_);
+    if (server_fd_ >= -1) close(server_fd_);
+    if (client_fd_ >= -1) close(client_fd_);
     std::cout << "StreamConsumer stop successfully" << std::endl;
 }
 

@@ -10,12 +10,9 @@
         byteOrder="littleEndian"> 
     <xi:include href="Common.xml"/>
 
-    <message name="L2Data" id="100" description="New Order Single">
-        <field name="instrumentId" id="1" type="uint8"/>
-        <field name="priceLevel" id="2" type="uint64"/>
-        <field name="quantity" id="3" type="int64"/>
-        <field name="side" id="4" type="SideEnum"/>
-        <field name="sequenceId" id="5" type="int64"/>
+    <message name="MatchedOrder" id="100" description="Maetched Order Single">
+        <field name="orderId" id="1" type="uint64"/>
+        <field name="quantity" id="3" type="uint64"/>
     </message>
 </sbe:messageSchema>
 

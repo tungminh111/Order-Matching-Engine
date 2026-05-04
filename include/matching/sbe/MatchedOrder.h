@@ -1,6 +1,6 @@
 /* Generated SBE (Simple Binary Encoding) message codec */
-#ifndef _SBE_L2DATA_CXX_H_
-#define _SBE_L2DATA_CXX_H_
+#ifndef _SBE_MATCHEDORDER_CXX_H_
+#define _SBE_MATCHEDORDER_CXX_H_
 
 #if __cplusplus >= 201103L
 #  define SBE_CONSTEXPR constexpr
@@ -91,11 +91,10 @@
 
 
 #include "MessageHeader.h"
-#include "SideEnum.h"
 
 namespace sbe {
 
-class L2Data
+class MatchedOrder
 {
 private:
     char *m_buffer = nullptr;
@@ -111,7 +110,7 @@ private:
     }
 
 public:
-    static constexpr std::uint16_t SBE_BLOCK_LENGTH = static_cast<std::uint16_t>(26);
+    static constexpr std::uint16_t SBE_BLOCK_LENGTH = static_cast<std::uint16_t>(16);
     static constexpr std::uint16_t SBE_TEMPLATE_ID = static_cast<std::uint16_t>(100);
     static constexpr std::uint16_t SBE_SCHEMA_ID = static_cast<std::uint16_t>(1);
     static constexpr std::uint16_t SBE_SCHEMA_VERSION = static_cast<std::uint16_t>(1);
@@ -136,9 +135,9 @@ public:
 
     using messageHeader = MessageHeader;
 
-    L2Data() = default;
+    MatchedOrder() = default;
 
-    L2Data(
+    MatchedOrder(
         char *buffer,
         const std::uint64_t offset,
         const std::uint64_t bufferLength,
@@ -153,23 +152,23 @@ public:
     {
     }
 
-    L2Data(char *buffer, const std::uint64_t bufferLength) :
-        L2Data(buffer, 0, bufferLength, sbeBlockLength(), sbeSchemaVersion())
+    MatchedOrder(char *buffer, const std::uint64_t bufferLength) :
+        MatchedOrder(buffer, 0, bufferLength, sbeBlockLength(), sbeSchemaVersion())
     {
     }
 
-    L2Data(
+    MatchedOrder(
         char *buffer,
         const std::uint64_t bufferLength,
         const std::uint64_t actingBlockLength,
         const std::uint64_t actingVersion) :
-        L2Data(buffer, 0, bufferLength, actingBlockLength, actingVersion)
+        MatchedOrder(buffer, 0, bufferLength, actingBlockLength, actingVersion)
     {
     }
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint16_t sbeBlockLength() SBE_NOEXCEPT
     {
-        return static_cast<std::uint16_t>(26);
+        return static_cast<std::uint16_t>(16);
     }
 
     SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t sbeBlockAndHeaderLength() SBE_NOEXCEPT
@@ -207,7 +206,7 @@ public:
         return m_offset;
     }
 
-    L2Data &wrapForEncode(char *buffer, const std::uint64_t offset, const std::uint64_t bufferLength)
+    MatchedOrder &wrapForEncode(char *buffer, const std::uint64_t offset, const std::uint64_t bufferLength)
     {
         m_buffer = buffer;
         m_bufferLength = bufferLength;
@@ -218,7 +217,7 @@ public:
         return *this;
     }
 
-    L2Data &wrapAndApplyHeader(char *buffer, const std::uint64_t offset, const std::uint64_t bufferLength)
+    MatchedOrder &wrapAndApplyHeader(char *buffer, const std::uint64_t offset, const std::uint64_t bufferLength)
     {
         messageHeader hdr(buffer, offset, bufferLength, sbeSchemaVersion());
 
@@ -237,7 +236,7 @@ public:
         return *this;
     }
 
-    L2Data &wrapForDecode(
+    MatchedOrder &wrapForDecode(
         char *buffer,
         const std::uint64_t offset,
         const std::uint64_t actingBlockLength,
@@ -253,7 +252,7 @@ public:
         return *this;
     }
 
-    L2Data &sbeRewind()
+    MatchedOrder &sbeRewind()
     {
         return wrapForDecode(m_buffer, m_offset, m_actingBlockLength, m_actingVersion, m_bufferLength);
     }
@@ -285,7 +284,7 @@ public:
 
     SBE_NODISCARD std::uint64_t decodeLength() const
     {
-        L2Data skipper(m_buffer, m_offset, m_bufferLength, m_actingBlockLength, m_actingVersion);
+        MatchedOrder skipper(m_buffer, m_offset, m_bufferLength, m_actingBlockLength, m_actingVersion);
         skipper.skip();
         return skipper.encodedLength();
     }
@@ -310,7 +309,7 @@ public:
         return m_actingVersion;
     }
 
-    SBE_NODISCARD static const char *instrumentIdMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
+    SBE_NODISCARD static const char *orderIdMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
     {
         switch (metaAttribute)
         {
@@ -319,120 +318,57 @@ public:
         }
     }
 
-    static SBE_CONSTEXPR std::uint16_t instrumentIdId() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint16_t orderIdId() SBE_NOEXCEPT
     {
         return 1;
     }
 
-    SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t instrumentIdSinceVersion() SBE_NOEXCEPT
+    SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t orderIdSinceVersion() SBE_NOEXCEPT
     {
         return 0;
     }
 
-    SBE_NODISCARD bool instrumentIdInActingVersion() SBE_NOEXCEPT
+    SBE_NODISCARD bool orderIdInActingVersion() SBE_NOEXCEPT
     {
         return true;
     }
 
-    SBE_NODISCARD static SBE_CONSTEXPR std::size_t instrumentIdEncodingOffset() SBE_NOEXCEPT
+    SBE_NODISCARD static SBE_CONSTEXPR std::size_t orderIdEncodingOffset() SBE_NOEXCEPT
     {
         return 0;
     }
 
-    static SBE_CONSTEXPR std::uint8_t instrumentIdNullValue() SBE_NOEXCEPT
-    {
-        return SBE_NULLVALUE_UINT8;
-    }
-
-    static SBE_CONSTEXPR std::uint8_t instrumentIdMinValue() SBE_NOEXCEPT
-    {
-        return static_cast<std::uint8_t>(0);
-    }
-
-    static SBE_CONSTEXPR std::uint8_t instrumentIdMaxValue() SBE_NOEXCEPT
-    {
-        return static_cast<std::uint8_t>(254);
-    }
-
-    static SBE_CONSTEXPR std::size_t instrumentIdEncodingLength() SBE_NOEXCEPT
-    {
-        return 1;
-    }
-
-    SBE_NODISCARD std::uint8_t instrumentId() const SBE_NOEXCEPT
-    {
-        std::uint8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 0, sizeof(std::uint8_t));
-        return (val);
-    }
-
-    L2Data &instrumentId(const std::uint8_t value) SBE_NOEXCEPT
-    {
-        std::uint8_t val = (value);
-        std::memcpy(m_buffer + m_offset + 0, &val, sizeof(std::uint8_t));
-        return *this;
-    }
-
-    SBE_NODISCARD static const char *priceLevelMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
-    {
-        switch (metaAttribute)
-        {
-            case MetaAttribute::PRESENCE: return "required";
-            default: return "";
-        }
-    }
-
-    static SBE_CONSTEXPR std::uint16_t priceLevelId() SBE_NOEXCEPT
-    {
-        return 2;
-    }
-
-    SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t priceLevelSinceVersion() SBE_NOEXCEPT
-    {
-        return 0;
-    }
-
-    SBE_NODISCARD bool priceLevelInActingVersion() SBE_NOEXCEPT
-    {
-        return true;
-    }
-
-    SBE_NODISCARD static SBE_CONSTEXPR std::size_t priceLevelEncodingOffset() SBE_NOEXCEPT
-    {
-        return 1;
-    }
-
-    static SBE_CONSTEXPR std::uint64_t priceLevelNullValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t orderIdNullValue() SBE_NOEXCEPT
     {
         return SBE_NULLVALUE_UINT64;
     }
 
-    static SBE_CONSTEXPR std::uint64_t priceLevelMinValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t orderIdMinValue() SBE_NOEXCEPT
     {
         return UINT64_C(0x0);
     }
 
-    static SBE_CONSTEXPR std::uint64_t priceLevelMaxValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t orderIdMaxValue() SBE_NOEXCEPT
     {
         return UINT64_C(0xfffffffffffffffe);
     }
 
-    static SBE_CONSTEXPR std::size_t priceLevelEncodingLength() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::size_t orderIdEncodingLength() SBE_NOEXCEPT
     {
         return 8;
     }
 
-    SBE_NODISCARD std::uint64_t priceLevel() const SBE_NOEXCEPT
+    SBE_NODISCARD std::uint64_t orderId() const SBE_NOEXCEPT
     {
         std::uint64_t val;
-        std::memcpy(&val, m_buffer + m_offset + 1, sizeof(std::uint64_t));
+        std::memcpy(&val, m_buffer + m_offset + 0, sizeof(std::uint64_t));
         return SBE_LITTLE_ENDIAN_ENCODE_64(val);
     }
 
-    L2Data &priceLevel(const std::uint64_t value) SBE_NOEXCEPT
+    MatchedOrder &orderId(const std::uint64_t value) SBE_NOEXCEPT
     {
         std::uint64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
-        std::memcpy(m_buffer + m_offset + 1, &val, sizeof(std::uint64_t));
+        std::memcpy(m_buffer + m_offset + 0, &val, sizeof(std::uint64_t));
         return *this;
     }
 
@@ -462,22 +398,22 @@ public:
 
     SBE_NODISCARD static SBE_CONSTEXPR std::size_t quantityEncodingOffset() SBE_NOEXCEPT
     {
-        return 9;
+        return 8;
     }
 
-    static SBE_CONSTEXPR std::int64_t quantityNullValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t quantityNullValue() SBE_NOEXCEPT
     {
-        return SBE_NULLVALUE_INT64;
+        return SBE_NULLVALUE_UINT64;
     }
 
-    static SBE_CONSTEXPR std::int64_t quantityMinValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t quantityMinValue() SBE_NOEXCEPT
     {
-        return INT64_C(-9223372036854775807);
+        return UINT64_C(0x0);
     }
 
-    static SBE_CONSTEXPR std::int64_t quantityMaxValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t quantityMaxValue() SBE_NOEXCEPT
     {
-        return INT64_C(9223372036854775807);
+        return UINT64_C(0xfffffffffffffffe);
     }
 
     static SBE_CONSTEXPR std::size_t quantityEncodingLength() SBE_NOEXCEPT
@@ -485,143 +421,25 @@ public:
         return 8;
     }
 
-    SBE_NODISCARD std::int64_t quantity() const SBE_NOEXCEPT
+    SBE_NODISCARD std::uint64_t quantity() const SBE_NOEXCEPT
     {
-        std::int64_t val;
-        std::memcpy(&val, m_buffer + m_offset + 9, sizeof(std::int64_t));
+        std::uint64_t val;
+        std::memcpy(&val, m_buffer + m_offset + 8, sizeof(std::uint64_t));
         return SBE_LITTLE_ENDIAN_ENCODE_64(val);
     }
 
-    L2Data &quantity(const std::int64_t value) SBE_NOEXCEPT
+    MatchedOrder &quantity(const std::uint64_t value) SBE_NOEXCEPT
     {
-        std::int64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
-        std::memcpy(m_buffer + m_offset + 9, &val, sizeof(std::int64_t));
-        return *this;
-    }
-
-    SBE_NODISCARD static const char *sideMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
-    {
-        switch (metaAttribute)
-        {
-            case MetaAttribute::PRESENCE: return "required";
-            default: return "";
-        }
-    }
-
-    static SBE_CONSTEXPR std::uint16_t sideId() SBE_NOEXCEPT
-    {
-        return 4;
-    }
-
-    SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t sideSinceVersion() SBE_NOEXCEPT
-    {
-        return 0;
-    }
-
-    SBE_NODISCARD bool sideInActingVersion() SBE_NOEXCEPT
-    {
-        return true;
-    }
-
-    SBE_NODISCARD static SBE_CONSTEXPR std::size_t sideEncodingOffset() SBE_NOEXCEPT
-    {
-        return 17;
-    }
-
-    SBE_NODISCARD static SBE_CONSTEXPR std::size_t sideEncodingLength() SBE_NOEXCEPT
-    {
-        return 1;
-    }
-
-    SBE_NODISCARD std::uint8_t sideRaw() const SBE_NOEXCEPT
-    {
-        std::uint8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 17, sizeof(std::uint8_t));
-        return (val);
-    }
-
-    SBE_NODISCARD SideEnum::Value side() const
-    {
-        std::uint8_t val;
-        std::memcpy(&val, m_buffer + m_offset + 17, sizeof(std::uint8_t));
-        return SideEnum::get((val));
-    }
-
-    L2Data &side(const SideEnum::Value value) SBE_NOEXCEPT
-    {
-        std::uint8_t val = (value);
-        std::memcpy(m_buffer + m_offset + 17, &val, sizeof(std::uint8_t));
-        return *this;
-    }
-
-    SBE_NODISCARD static const char *sequenceIdMetaAttribute(const MetaAttribute metaAttribute) SBE_NOEXCEPT
-    {
-        switch (metaAttribute)
-        {
-            case MetaAttribute::PRESENCE: return "required";
-            default: return "";
-        }
-    }
-
-    static SBE_CONSTEXPR std::uint16_t sequenceIdId() SBE_NOEXCEPT
-    {
-        return 5;
-    }
-
-    SBE_NODISCARD static SBE_CONSTEXPR std::uint64_t sequenceIdSinceVersion() SBE_NOEXCEPT
-    {
-        return 0;
-    }
-
-    SBE_NODISCARD bool sequenceIdInActingVersion() SBE_NOEXCEPT
-    {
-        return true;
-    }
-
-    SBE_NODISCARD static SBE_CONSTEXPR std::size_t sequenceIdEncodingOffset() SBE_NOEXCEPT
-    {
-        return 18;
-    }
-
-    static SBE_CONSTEXPR std::int64_t sequenceIdNullValue() SBE_NOEXCEPT
-    {
-        return SBE_NULLVALUE_INT64;
-    }
-
-    static SBE_CONSTEXPR std::int64_t sequenceIdMinValue() SBE_NOEXCEPT
-    {
-        return INT64_C(-9223372036854775807);
-    }
-
-    static SBE_CONSTEXPR std::int64_t sequenceIdMaxValue() SBE_NOEXCEPT
-    {
-        return INT64_C(9223372036854775807);
-    }
-
-    static SBE_CONSTEXPR std::size_t sequenceIdEncodingLength() SBE_NOEXCEPT
-    {
-        return 8;
-    }
-
-    SBE_NODISCARD std::int64_t sequenceId() const SBE_NOEXCEPT
-    {
-        std::int64_t val;
-        std::memcpy(&val, m_buffer + m_offset + 18, sizeof(std::int64_t));
-        return SBE_LITTLE_ENDIAN_ENCODE_64(val);
-    }
-
-    L2Data &sequenceId(const std::int64_t value) SBE_NOEXCEPT
-    {
-        std::int64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
-        std::memcpy(m_buffer + m_offset + 18, &val, sizeof(std::int64_t));
+        std::uint64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
+        std::memcpy(m_buffer + m_offset + 8, &val, sizeof(std::uint64_t));
         return *this;
     }
 
 template<typename CharT, typename Traits>
 friend std::basic_ostream<CharT, Traits> & operator << (
-    std::basic_ostream<CharT, Traits> &builder, const L2Data &_writer)
+    std::basic_ostream<CharT, Traits> &builder, const MatchedOrder &_writer)
 {
-    L2Data writer(
+    MatchedOrder writer(
         _writer.m_buffer,
         _writer.m_offset,
         _writer.m_bufferLength,
@@ -629,29 +447,17 @@ friend std::basic_ostream<CharT, Traits> & operator << (
         _writer.m_actingVersion);
 
     builder << '{';
-    builder << R"("Name": "L2Data", )";
+    builder << R"("Name": "MatchedOrder", )";
     builder << R"("sbeTemplateId": )";
     builder << writer.sbeTemplateId();
     builder << ", ";
 
-    builder << R"("instrumentId": )";
-    builder << +writer.instrumentId();
-
-    builder << ", ";
-    builder << R"("priceLevel": )";
-    builder << +writer.priceLevel();
+    builder << R"("orderId": )";
+    builder << +writer.orderId();
 
     builder << ", ";
     builder << R"("quantity": )";
     builder << +writer.quantity();
-
-    builder << ", ";
-    builder << R"("side": )";
-    builder << '"' << writer.side() << '"';
-
-    builder << ", ";
-    builder << R"("sequenceId": )";
-    builder << +writer.sequenceId();
 
     builder << '}';
 

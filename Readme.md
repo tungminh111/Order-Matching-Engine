@@ -59,9 +59,14 @@ root
 ## TCP stream consumer implementation
 ### The TCP server
 The goal of this layer is to create a TCP server that receives orders in bytes.
+
 The first thing come to my mind is to create a TCP server using socket library, straighforward, and high performance!
+
 The server reads the data using recv function, and buffer the data into a Ring Buffer. 
-The server initially simply reads chunk of data, and decode to Order object with the assumption that I can guarantee the capacity can be devided by the size of Order object. Therefore, no boundary handling is made (for example, list 8 bytes in the end of the buffer + first 8 bytes of the buffer are of the same object).
+
+The server initially simply reads chunk of data, and decode to Order object with the assumption that I can guarantee the capacity can be devided by the size of Order object.
+Therefore, no boundary handling is made (for example, list 8 bytes in the end of the buffer + first 8 bytes of the buffer are of the same object).
+
 The capacity of the buffer is chosen as 2 ^ 15, to ensure the modulo operations of pointers can be optimized by the compiler.
 
 ### The Schema problem
