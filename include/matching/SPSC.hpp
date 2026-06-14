@@ -9,16 +9,19 @@ class SPSC {
     void write(T order) {
         // assuming capacity never reached
         buffer_[last_ & (capacity - 1)] = order;
-        last_ += 1;
+        last_.fetch_add(1, std::memory_order_release);
     }
 
     T read() {
         T ret = buffer_[first_ & (capacity - 1)];
-        first_ += 1;
+        first_.fetch_add(1, std::memory_order_release);
         return ret;
     }
 
-    bool canRead() { return first_ < last_; }
+    bool canRead() {
+        return first_.load(std::memory_order_relaxed) <
+               last_.load(std::memory_order_acquire);
+    }
 
    private:
     std::array<T, capacity> buffer_;

@@ -12,7 +12,7 @@
 
     <message name="MatchedOrder" id="100" description="Maetched Order Single">
         <field name="orderId" id="1" type="uint64"/>
-        <field name="quantity" id="3" type="uint64"/>
+        <field name="quantity" id="2" type="uint64"/>
     </message>
 </sbe:messageSchema>
 
