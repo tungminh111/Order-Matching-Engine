@@ -4,11 +4,13 @@
 #include <ios>
 #include <iterator>
 #include <memory>
+#include <numeric>
 #include <set>
 #include <thread>
 #include <vector>
 
 #include "matching/L2Data.hpp"
+#include "matching/MetricsRecorder.hpp"
 #include "matching/Order.hpp"
 #include "matching/OrderMatcher.hpp"
 #include "matching/SPSC.hpp"
@@ -30,8 +32,11 @@ void TestOrderMatcherSingleCase(std::vector<Order> orders,
 
     std::thread order_producer_thread(order_producer);
 
+    auto metrics_buffer = std::make_shared<DefaultSPSC<int64_t>>();
+    auto metrics_recorder = std::make_shared<MetricsRecorder>(metrics_buffer);
+
     OrderMatcher order_matcher(input_order_buffer, l2_buffer,
-                               match_order_buffer);
+                               match_order_buffer, metrics_recorder);
     std::thread order_matcher_thread(&OrderMatcher::start, &order_matcher);
 
     std::vector<L2Data> result_l2_data;
@@ -490,8 +495,8 @@ TEST(OrderMatcherTest, PerformanceTest) {
     // random mid price
     // choose next 1000000 levels, random 10 orders with 10 price
     srand(time(nullptr));
-    const int iteration = 2;
-    const int book_depth = 1e3;
+    const int iteration = 30;
+    const int book_depth = 1e5;
 
     uint64_t prev_mid_price = -1;
     std::multiset<std::pair<uint64_t, std::pair<uint64_t, Order>>> asks;
@@ -503,6 +508,7 @@ TEST(OrderMatcherTest, PerformanceTest) {
     auto l2_buffer = std::make_shared<DefaultSPSC<L2Data>>();
     auto match_order_buffer = std::make_shared<DefaultSPSC<MatchedOrder>>();
 
+    // INIT DEPENDENCIES
     std::vector<L2Data> expect_l2s;
     std::vector<L2Data> result_l2_data;
     std::vector<MatchedOrder> expect_matches;
@@ -519,9 +525,24 @@ TEST(OrderMatcherTest, PerformanceTest) {
     };
     std::thread result_verifier_thread(l2_consumer);
 
+    auto metrics_buffer = std::make_shared<DefaultSPSC<int64_t>>();
+    auto metrics_recorder = std::make_shared<MetricsRecorder>(metrics_buffer);
+
+    std::vector<int64_t> latencies;
+    bool metrics_consumer_stop = false;
+    auto metrics_consumer = [&]() {
+        while (!metrics_consumer_stop || metrics_buffer->canRead()) {
+            if (metrics_buffer->canRead())
+                latencies.push_back(metrics_buffer->read());
+        }
+    };
+    std::thread metrics_consumer_thread(metrics_consumer);
+
     OrderMatcher order_matcher(input_order_buffer, l2_buffer,
-                               match_order_buffer);
+                               match_order_buffer, metrics_recorder);
     std::thread order_matcher_thread(&OrderMatcher::start, &order_matcher);
+
+    // PROCESS
 
     for (int i = 0; i < iteration; ++i) {
         // uint64_t mid_price = randInt<uint64_t, 1000000, 9000000>();
@@ -681,6 +702,9 @@ TEST(OrderMatcherTest, PerformanceTest) {
     l2_consumer_stop = true;
     result_verifier_thread.join();
 
+    metrics_consumer_stop = true;
+    metrics_consumer_thread.join();
+
     ASSERT_EQ(expect_matches.size(), result_match_orders.size());
     for (int i = 0; i < expect_matches.size(); ++i) {
         ASSERT_EQ(expect_matches[i], result_match_orders[i]);
@@ -689,4 +713,10 @@ TEST(OrderMatcherTest, PerformanceTest) {
     for (int i = 0; i < expect_l2s.size(); ++i) {
         ASSERT_EQ(expect_l2s[i], result_l2_data[i]);
     }
+
+    int64_t sum_latencies = std::accumulate(latencies.begin(), latencies.end(), 0LL);
+    int64_t mean = sum_latencies / latencies.size();
+    std::cout << "Latency: " << mean << "ns" << std::endl;
+    std::cout << "Sample count: " << latencies.size() << std::endl;
+
 }

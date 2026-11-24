@@ -15,7 +15,7 @@
 #include "matching/sbe/NewOrder.h"
 
 StreamConsumer::StreamConsumer(
-    std::shared_ptr<SPSC<Order, 1 << 15>> order_buffer)
+    std::shared_ptr<DefaultSPSC<Order>> order_buffer)
     : order_buffer_(order_buffer) {}
 
 void StreamConsumer::start() {

@@ -21,11 +21,32 @@ class SPSC {
         last_.store(l + 1, std::memory_order_release);
     }
 
+    void tryWrite(T order) {
+        if (!canWrite()) return;
+        int l = last_.load(std::memory_order_relaxed);
+        buffer_[l & (capacity - 1)] = order;
+        last_.store(l + 1, std::memory_order_release);
+    }
+
     T read() {
         int f = first_.load(std::memory_order_relaxed);
         T ret = buffer_[f & (capacity - 1)];
         buffer_[f & (capacity - 1)] = T();
         first_.store(f + 1, std::memory_order_release);
+        return ret;
+    }
+
+    std::vector<T> drain() {
+        int f = first_.load(std::memory_order_relaxed);
+        int l = last_.load(std::memory_order_acquire);
+
+        std::vector<T> ret;
+        ret.reserve(l - f);
+        for(int i = f; i < l; ++i) {
+            ret.push_back(buffer_[i & (capacity - 1)]);
+        }
+
+        first_.store(l, std::memory_order_release);
         return ret;
     }
 
@@ -46,4 +67,4 @@ class SPSC {
 };
 
 template <class T>
-using DefaultSPSC = SPSC<T, 1 << 15>;
+using DefaultSPSC = SPSC<T, (1 << 22)>;

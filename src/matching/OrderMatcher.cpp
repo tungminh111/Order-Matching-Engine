@@ -9,9 +9,11 @@
 
 InstrumentOrderMatcher::InstrumentOrderMatcher(
     std::shared_ptr<DefaultSPSC<L2Data>> l2_data_buffer,
-    std::shared_ptr<DefaultSPSC<MatchedOrder>> matched_order_buffer)
+    std::shared_ptr<DefaultSPSC<MatchedOrder>> matched_order_buffer,
+    std::shared_ptr<MetricsRecorder> metrics_recorder)
     : l2_data_buffer_(l2_data_buffer),
-      matched_order_buffer_(matched_order_buffer) {}
+      matched_order_buffer_(matched_order_buffer),
+      metrics_recorder_(metrics_recorder) {}
 
 std::vector<MatchedOrder> InstrumentOrderMatcher::PriceLevel::matchOrder(
     Order& new_order) {
@@ -52,6 +54,8 @@ bool InstrumentOrderMatcher::PriceLevel::isEmpty() {
 }
 
 void InstrumentOrderMatcher::handleOrder(Order new_order) {
+    auto timer = metrics_recorder_->newTimer();
+
     if (new_order.action_ == OrderAction::Create) {
         addOrder(new_order);
     } else if (new_order.action_ == OrderAction::Cancel) {
@@ -221,7 +225,8 @@ void OrderMatcher::start() {
             instrument_matcher_.end()) {
             instrument_matcher_.emplace(
                 new_order.instrument_id_,
-                InstrumentOrderMatcher(l2_data_buffer_, matched_order_buffer_));
+                InstrumentOrderMatcher(l2_data_buffer_, matched_order_buffer_,
+                                       metrics_recorder_));
         }
 
         instrument_matcher_.at(new_order.instrument_id_).handleOrder(new_order);
@@ -231,9 +236,12 @@ void OrderMatcher::start() {
 OrderMatcher::OrderMatcher(
     std::shared_ptr<DefaultSPSC<Order>> order_buffer,
     std::shared_ptr<DefaultSPSC<L2Data>> l2_data_buffer,
-    std::shared_ptr<DefaultSPSC<MatchedOrder>> matched_order_buffer)
+    std::shared_ptr<DefaultSPSC<MatchedOrder>> matched_order_buffer,
+    std::shared_ptr<MetricsRecorder> metrics_recorder)
+
     : order_buffer_(order_buffer),
       l2_data_buffer_(l2_data_buffer),
-      matched_order_buffer_(matched_order_buffer) {}
+      matched_order_buffer_(matched_order_buffer),
+      metrics_recorder_(metrics_recorder) {}
 
 void OrderMatcher::stop() { stopped = true; }

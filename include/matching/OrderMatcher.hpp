@@ -7,13 +7,15 @@
 #include <vector>
 
 #include "matching/L2Data.hpp"
+#include "matching/MetricsRecorder.hpp"
 #include "matching/Order.hpp"
 #include "matching/SPSC.hpp"
 class InstrumentOrderMatcher {
    public:
     InstrumentOrderMatcher(
         std::shared_ptr<DefaultSPSC<L2Data>> l2_data_buffer,
-        std::shared_ptr<DefaultSPSC<MatchedOrder>> matched_order_buffer);
+        std::shared_ptr<DefaultSPSC<MatchedOrder>> matched_order_buffer,
+        std::shared_ptr<MetricsRecorder> metrics_recorder);
 
     void handleOrder(Order new_order);
 
@@ -44,6 +46,7 @@ class InstrumentOrderMatcher {
 
     std::shared_ptr<DefaultSPSC<L2Data>> l2_data_buffer_;
     std::shared_ptr<DefaultSPSC<MatchedOrder>> matched_order_buffer_;
+    std::shared_ptr<MetricsRecorder> metrics_recorder_;
 };
 
 class OrderMatcher {
@@ -51,7 +54,8 @@ class OrderMatcher {
     OrderMatcher(
         std::shared_ptr<DefaultSPSC<Order>> order_buffer,
         std::shared_ptr<DefaultSPSC<L2Data>> l2_data_buffer,
-        std::shared_ptr<DefaultSPSC<MatchedOrder>> matched_order_buffer);
+        std::shared_ptr<DefaultSPSC<MatchedOrder>> matched_order_buffer,
+        std::shared_ptr<MetricsRecorder> metrics_recorder);
 
     void start();
     void stop();
@@ -63,6 +67,7 @@ class OrderMatcher {
     // output
     std::shared_ptr<DefaultSPSC<L2Data>> l2_data_buffer_;
     std::shared_ptr<DefaultSPSC<MatchedOrder>> matched_order_buffer_;
+    std::shared_ptr<MetricsRecorder> metrics_recorder_;
 
     bool stopped = false;
 };
