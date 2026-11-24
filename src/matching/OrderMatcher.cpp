@@ -1,5 +1,6 @@
 #include "matching/OrderMatcher.hpp"
 
+#include <iostream>
 #include <limits>
 #include <stdexcept>
 
@@ -16,7 +17,7 @@ std::vector<MatchedOrder> InstrumentOrderMatcher::PriceLevel::matchOrder(
     Order& new_order) {
     std::vector<MatchedOrder> ret;
     while (!orders_.empty()) {
-        int8_t matchedQuantity =
+        int64_t matchedQuantity =
             std::min(new_order.quantity_, orders_.front().quantity_);
         orders_.front().quantity_ -= matchedQuantity;
         new_order.quantity_ -= matchedQuantity;
@@ -66,7 +67,8 @@ void InstrumentOrderMatcher::handleOrder(Order new_order) {
             l2_data_buffer_->write(
                 L2Data{.instrument_id_ = new_order.instrument_id_,
                        .price_level_ = order_pos->price_,
-                       .quantity_ = new_order.quantity_ - order_pos->quantity_,
+                       .quantity_ = static_cast<int64_t>(new_order.quantity_) -
+                                    static_cast<int64_t>(order_pos->quantity_),
                        .side_ = order_pos->side_});
 
             order_pos->quantity_ = new_order.quantity_;
@@ -94,7 +96,7 @@ void InstrumentOrderMatcher::addOrder(Order new_order) {
                new_order.price_ >= asks_.begin()->first) {
             auto matched_orders = asks_.begin()->second.matchOrder(new_order);
 
-            int32_t level_qty_change = 0;
+            int64_t level_qty_change = 0;
             for (const MatchedOrder& matched_order : matched_orders) {
                 level_qty_change -= matched_order.quantity_;
                 matched_order_buffer_->write(matched_order);
@@ -135,7 +137,7 @@ void InstrumentOrderMatcher::addOrder(Order new_order) {
                new_order.price_ <= bids_.begin()->first) {
             auto matched_orders = bids_.begin()->second.matchOrder(new_order);
 
-            int32_t level_qty_change = 0;
+            int64_t level_qty_change = 0;
             for (const MatchedOrder& matched_order : matched_orders) {
                 level_qty_change -= matched_order.quantity_;
                 matched_order_buffer_->write(matched_order);
@@ -177,7 +179,7 @@ void InstrumentOrderMatcher::addOrder(Order new_order) {
         l2_data_buffer_->write(
             L2Data{.instrument_id_ = new_order.instrument_id_,
                    .price_level_ = new_order.price_,
-                   .quantity_ = new_order.quantity_,
+                   .quantity_ = static_cast<int64_t>(new_order.quantity_),
                    .side_ = new_order.side_});
     }
 }
@@ -189,10 +191,11 @@ void InstrumentOrderMatcher::removeOrder(int order_id) {
     }
 
     std::list<Order>::iterator order_pos = it->second;
-    l2_data_buffer_->write(L2Data{.instrument_id_ = order_pos->instrument_id_,
-                                  .price_level_ = order_pos->price_,
-                                  .quantity_ = -order_pos->quantity_,
-                                  .side_ = order_pos->side_});
+    l2_data_buffer_->write(
+        L2Data{.instrument_id_ = order_pos->instrument_id_,
+               .price_level_ = order_pos->price_,
+               .quantity_ = -static_cast<int64_t>(order_pos->quantity_),
+               .side_ = order_pos->side_});
 
     if (order_pos->side_ == OrderSide::Buy) {
         auto it = bids_.find(order_pos->price_);
@@ -211,7 +214,7 @@ void InstrumentOrderMatcher::removeOrder(int order_id) {
 }
 
 void OrderMatcher::start() {
-    while (!stopped) {
+    while (!stopped || order_buffer_->canRead()) {
         if (!order_buffer_->canRead()) continue;
         Order new_order = order_buffer_->read();
         if (instrument_matcher_.find(new_order.instrument_id_) ==

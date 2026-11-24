@@ -1,6 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <cstdlib>
+#include <ios>
+#include <iterator>
 #include <memory>
+#include <set>
 #include <thread>
 #include <vector>
 
@@ -452,3 +456,237 @@ Match amount: 50
 
 Is matched fully: Order 5 (Yes), Order 3 (No)
 **/
+
+uint64_t id_counter = 0;
+
+Order newOrder(OrderSide side, uint64_t price, uint64_t qty) {
+    return Order{.order_id_ = id_counter++,
+                 .price_ = price,
+                 .quantity_ = qty,
+                 .side_ = side};
+}
+
+template <typename T, T min_rand, T max_rand>
+T randInt() {
+    static_assert(min_rand < max_rand);
+    T range = max_rand - min_rand;
+    return min_rand + ((uint64_t)rand() * rand() * rand()) % range;
+}
+
+std::pair<int64_t, std::vector<Order>> randomOrder(OrderSide side,
+                                                   uint64_t price_level) {
+    size_t level_size = 10;
+    // size_t level_size = randInt<size_t, 1, 10>();
+    uint64_t sum = 0;
+    std::vector<Order> orders;
+    for (int i = 0; i < level_size; ++i) {
+        uint64_t qty = randInt<uint64_t, 1, 10000>();
+        orders.push_back(newOrder(side, price_level, qty));
+    }
+    return {sum, orders};
+}
+
+TEST(OrderMatcherTest, PerformanceTest) {
+    // random mid price
+    // choose next 1000000 levels, random 10 orders with 10 price
+    srand(time(nullptr));
+    const int iteration = 2;
+    const int book_depth = 1e3;
+
+    uint64_t prev_mid_price = -1;
+    std::multiset<std::pair<uint64_t, std::pair<uint64_t, Order>>> asks;
+    std::multiset<std::pair<uint64_t, std::pair<uint64_t, Order>>,
+                  std::greater<>>
+        bids;
+
+    auto input_order_buffer = std::make_shared<DefaultSPSC<Order>>();
+    auto l2_buffer = std::make_shared<DefaultSPSC<L2Data>>();
+    auto match_order_buffer = std::make_shared<DefaultSPSC<MatchedOrder>>();
+
+    std::vector<L2Data> expect_l2s;
+    std::vector<L2Data> result_l2_data;
+    std::vector<MatchedOrder> expect_matches;
+    std::vector<MatchedOrder> result_match_orders;
+    bool l2_consumer_stop = false;
+    auto l2_consumer = [&]() {
+        while (!l2_consumer_stop ||
+               (l2_buffer->canRead() || match_order_buffer->canRead())) {
+            if (l2_buffer->canRead())
+                result_l2_data.push_back(l2_buffer->read());
+            if (match_order_buffer->canRead())
+                result_match_orders.push_back(match_order_buffer->read());
+        }
+    };
+    std::thread result_verifier_thread(l2_consumer);
+
+    OrderMatcher order_matcher(input_order_buffer, l2_buffer,
+                               match_order_buffer);
+    std::thread order_matcher_thread(&OrderMatcher::start, &order_matcher);
+
+    for (int i = 0; i < iteration; ++i) {
+        // uint64_t mid_price = randInt<uint64_t, 1000000, 9000000>();
+        uint64_t mid_price = (i + 1) * 1e6;
+        std::vector<Order> orders;
+
+        // move mid price
+        if (prev_mid_price != -1) {
+            const uint64_t max_single_order_qty = 20000;
+            int64_t cur_qty = 0;
+            uint64_t last_order_price = 0;
+            int64_t last_price_qty = 0;
+            if (mid_price > prev_mid_price) {
+                while (!asks.empty() && asks.begin()->first <= mid_price) {
+                    auto maker_order = asks.begin()->second.second;
+                    asks.erase(asks.begin());
+
+                    if (maker_order.price_ != last_order_price &&
+                        last_order_price != 0 && last_price_qty != 0) {
+                        expect_l2s.push_back(
+                            L2Data{.price_level_ = last_order_price,
+                                   .quantity_ = -last_price_qty,
+                                   .side_ = OrderSide::Sell});
+                        last_price_qty = maker_order.quantity_;
+                    } else {
+                        last_price_qty += maker_order.quantity_;
+                    }
+                    last_order_price = maker_order.price_;
+
+                    cur_qty += maker_order.quantity_;
+                    bool flush =
+                        asks.empty() || (cur_qty >= max_single_order_qty);
+
+                    expect_matches.push_back(
+                        MatchedOrder{.order_id_ = maker_order.order_id_,
+                                     .quantity_ = maker_order.quantity_,
+                                     .match_full_ = true});
+                    expect_matches.push_back(
+                        MatchedOrder{.order_id_ = id_counter,
+                                     .quantity_ = maker_order.quantity_,
+                                     .match_full_ = flush});
+
+                    if (flush) {
+                        orders.push_back(
+                            newOrder(OrderSide::Buy, mid_price, cur_qty));
+                        cur_qty = 0;
+
+                        expect_l2s.push_back(
+                            L2Data{.price_level_ = last_order_price,
+                                   .quantity_ = -last_price_qty,
+                                   .side_ = OrderSide::Sell});
+                        last_price_qty = 0;
+                    }
+                }
+                if (last_price_qty != 0) {
+                    expect_l2s.push_back(
+                        L2Data{.price_level_ = last_order_price,
+                               .quantity_ = -last_price_qty,
+                               .side_ = OrderSide::Sell});
+                }
+            } else {
+                while (!bids.empty() && bids.begin()->first > mid_price) {
+                    auto maker_order = bids.begin()->second.second;
+
+                    if (maker_order.price_ != last_order_price &&
+                        last_order_price != 0 && last_price_qty != 0) {
+                        expect_l2s.push_back(
+                            L2Data{.price_level_ = last_order_price,
+                                   .quantity_ = -last_price_qty,
+                                   .side_ = OrderSide::Buy});
+                        last_price_qty = maker_order.quantity_;
+                    } else {
+                        last_price_qty += maker_order.quantity_;
+                    }
+                    last_order_price = maker_order.price_;
+
+                    bids.erase(bids.begin());
+
+                    cur_qty += maker_order.quantity_;
+                    bool flush =
+                        bids.empty() || (cur_qty >= max_single_order_qty);
+                    expect_matches.push_back(
+                        MatchedOrder{.order_id_ = maker_order.order_id_,
+                                     .quantity_ = maker_order.quantity_,
+                                     .match_full_ = true});
+                    expect_matches.push_back(
+                        MatchedOrder{.order_id_ = id_counter,
+                                     .quantity_ = maker_order.quantity_,
+                                     .match_full_ = flush});
+                    if (flush) {
+                        orders.push_back(
+                            newOrder(OrderSide::Sell, mid_price + 1, cur_qty));
+                        cur_qty = 0;
+
+                        expect_l2s.push_back(
+                            L2Data{.price_level_ = last_order_price,
+                                   .quantity_ = -last_price_qty,
+                                   .side_ = OrderSide::Buy});
+                        last_price_qty = 0;
+                    }
+                }
+                if (last_price_qty != 0) {
+                    expect_l2s.push_back(
+                        L2Data{.price_level_ = last_order_price,
+                               .quantity_ = -last_price_qty,
+                               .side_ = OrderSide::Buy});
+                }
+            }
+        }
+
+        // place move orders
+        for (auto& order : orders) {
+            while (!input_order_buffer->canWrite()) {
+            }
+            input_order_buffer->write(order);
+        }
+        orders.clear();
+
+        // make new orders
+        for (auto j = mid_price; j > mid_price - book_depth; --j) {
+            auto [level_size, level_orders] = randomOrder(OrderSide::Buy, j);
+            for (auto& order : level_orders) {
+                orders.push_back(order);
+                bids.emplace(j, std::make_pair(-order.order_id_, order));
+                expect_l2s.push_back(
+                    L2Data{.price_level_ = j,
+                           .quantity_ = static_cast<int64_t>(order.quantity_),
+                           .side_ = OrderSide::Buy});
+            }
+        }
+        for (auto j = mid_price + 1; j <= mid_price + book_depth; ++j) {
+            auto [level_size, level_orders] = randomOrder(OrderSide::Sell, j);
+            for (auto& order : level_orders) {
+                orders.push_back(order);
+                asks.emplace(j, std::make_pair(order.order_id_, order));
+                expect_l2s.push_back(
+                    L2Data{.price_level_ = j,
+                           .quantity_ = static_cast<int64_t>(order.quantity_),
+                           .side_ = OrderSide::Sell});
+            }
+        }
+
+        // place new orders
+        for (auto& order : orders) {
+            while (!input_order_buffer->canWrite()) {
+            }
+            input_order_buffer->write(order);
+        }
+        orders.clear();
+
+        prev_mid_price = mid_price;
+    }
+
+    order_matcher.stop();
+    order_matcher_thread.join();
+
+    l2_consumer_stop = true;
+    result_verifier_thread.join();
+
+    ASSERT_EQ(expect_matches.size(), result_match_orders.size());
+    for (int i = 0; i < expect_matches.size(); ++i) {
+        ASSERT_EQ(expect_matches[i], result_match_orders[i]);
+    }
+    ASSERT_EQ(expect_l2s.size(), result_l2_data.size());
+    for (int i = 0; i < expect_l2s.size(); ++i) {
+        ASSERT_EQ(expect_l2s[i], result_l2_data[i]);
+    }
+}

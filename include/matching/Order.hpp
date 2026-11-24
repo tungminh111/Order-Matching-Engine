@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <compare>
 
 enum OrderSide { Buy = 0, Sell };
 
@@ -18,7 +19,7 @@ struct alignas(64) Order {
     OrderType type_;
     OrderAction action_;
 
-    bool operator==(const Order&) const = default;
+    auto operator<=>(const Order&) const = default;
 };
 
 struct alignas(64) MatchedOrder {
