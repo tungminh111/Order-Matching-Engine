@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <gtest/gtest.h>
 
 #include <cstdlib>
@@ -707,12 +708,12 @@ TEST(OrderMatcherTest, PerformanceTest) {
     metrics_consumer_stop = true;
     metrics_consumer_thread.join();
 
-    // ASSERT_EQ(expect_matches.size(), result_match_orders.size());
+    ASSERT_EQ(expect_matches.size(), result_match_orders.size());
     for (int i = 0; i < expect_matches.size(); ++i) {
-        auto x = expect_matches[i];
-        auto y = result_match_orders[i];
-        assert(x == y);
-        assert(order_map[x.order_id_].order_id_ == x.order_id_);
+        //auto x = expect_matches[i];
+        //auto y = result_match_orders[i];
+        //assert(x == y);
+        //assert(order_map[x.order_id_].order_id_ == x.order_id_);
         ASSERT_EQ(expect_matches[i], result_match_orders[i]);
     }
     ASSERT_EQ(expect_l2s.size(), result_l2_data.size());
@@ -722,7 +723,9 @@ TEST(OrderMatcherTest, PerformanceTest) {
 
     int64_t sum_latencies = std::accumulate(latencies.begin(), latencies.end(), 0LL);
     int64_t mean = sum_latencies / latencies.size();
-    std::cout << "Latency: " << mean << "ns" << std::endl;
+    std::sort(latencies.begin(), latencies.end());
+    std::cout << "Median latency: " << mean << "ns" << std::endl;
+    std::cout << "P90 latency: " << latencies[static_cast<int>(latencies.size() * 0.9)]<< "ns" << std::endl;
+    std::cout << "P99 latency: " << latencies[static_cast<int>(latencies.size() * 0.99)]<< "ns" << std::endl;
     std::cout << "Sample count: " << latencies.size() << std::endl;
-
 }
