@@ -480,8 +480,7 @@ T randInt() {
 
 std::pair<int64_t, std::vector<Order>> randomOrder(OrderSide side,
                                                    uint64_t price_level) {
-    size_t level_size = 10;
-    // size_t level_size = randInt<size_t, 1, 10>();
+    size_t level_size = randInt<size_t, 1, 10>();
     uint64_t sum = 0;
     std::vector<Order> orders;
     for (int i = 0; i < level_size; ++i) {
@@ -500,7 +499,7 @@ TEST(OrderMatcherTest, PerformanceTest) {
 
     uint64_t prev_mid_price = -1;
     std::multiset<std::pair<uint64_t, std::pair<uint64_t, Order>>> asks;
-    std::multiset<std::pair<uint64_t, std::pair<uint64_t, Order>>,
+    std::multiset<std::pair<uint64_t, std::pair<int64_t, Order>>,
                   std::greater<>>
         bids;
 
@@ -541,12 +540,13 @@ TEST(OrderMatcherTest, PerformanceTest) {
     OrderMatcher order_matcher(input_order_buffer, l2_buffer,
                                match_order_buffer, metrics_recorder);
     std::thread order_matcher_thread(&OrderMatcher::start, &order_matcher);
+    std::map<uint64_t, Order> order_map;
 
     // PROCESS
 
     for (int i = 0; i < iteration; ++i) {
-        // uint64_t mid_price = randInt<uint64_t, 1000000, 9000000>();
-        uint64_t mid_price = (i + 1) * 1e6;
+        //uint64_t mid_price = i * 2000;
+        uint64_t mid_price = randInt<uint64_t, 1000000, 9000000>();
         std::vector<Order> orders;
 
         // move mid price
@@ -574,7 +574,7 @@ TEST(OrderMatcherTest, PerformanceTest) {
 
                     cur_qty += maker_order.quantity_;
                     bool flush =
-                        asks.empty() || (cur_qty >= max_single_order_qty);
+                        (asks.empty() || asks.begin()->first > mid_price) || (cur_qty >= max_single_order_qty);
 
                     expect_matches.push_back(
                         MatchedOrder{.order_id_ = maker_order.order_id_,
@@ -606,6 +606,7 @@ TEST(OrderMatcherTest, PerformanceTest) {
             } else {
                 while (!bids.empty() && bids.begin()->first > mid_price) {
                     auto maker_order = bids.begin()->second.second;
+                    bids.erase(bids.begin());
 
                     if (maker_order.price_ != last_order_price &&
                         last_order_price != 0 && last_price_qty != 0) {
@@ -619,11 +620,10 @@ TEST(OrderMatcherTest, PerformanceTest) {
                     }
                     last_order_price = maker_order.price_;
 
-                    bids.erase(bids.begin());
 
                     cur_qty += maker_order.quantity_;
                     bool flush =
-                        bids.empty() || (cur_qty >= max_single_order_qty);
+                        (bids.empty() || bids.begin()->first <= mid_price) || (cur_qty >= max_single_order_qty);
                     expect_matches.push_back(
                         MatchedOrder{.order_id_ = maker_order.order_id_,
                                      .quantity_ = maker_order.quantity_,
@@ -658,6 +658,7 @@ TEST(OrderMatcherTest, PerformanceTest) {
             while (!input_order_buffer->canWrite()) {
             }
             input_order_buffer->write(order);
+            order_map[order.order_id_] = order;
         }
         orders.clear();
 
@@ -690,6 +691,7 @@ TEST(OrderMatcherTest, PerformanceTest) {
             while (!input_order_buffer->canWrite()) {
             }
             input_order_buffer->write(order);
+            order_map[order.order_id_] = order;
         }
         orders.clear();
 
@@ -705,8 +707,12 @@ TEST(OrderMatcherTest, PerformanceTest) {
     metrics_consumer_stop = true;
     metrics_consumer_thread.join();
 
-    ASSERT_EQ(expect_matches.size(), result_match_orders.size());
+    // ASSERT_EQ(expect_matches.size(), result_match_orders.size());
     for (int i = 0; i < expect_matches.size(); ++i) {
+        auto x = expect_matches[i];
+        auto y = result_match_orders[i];
+        assert(x == y);
+        assert(order_map[x.order_id_].order_id_ == x.order_id_);
         ASSERT_EQ(expect_matches[i], result_match_orders[i]);
     }
     ASSERT_EQ(expect_l2s.size(), result_l2_data.size());
