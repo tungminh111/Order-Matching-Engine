@@ -13,7 +13,9 @@ InstrumentOrderMatcher::InstrumentOrderMatcher(
     std::shared_ptr<MetricsRecorder> metrics_recorder)
     : l2_data_buffer_(l2_data_buffer),
       matched_order_buffer_(matched_order_buffer),
-      metrics_recorder_(metrics_recorder) {}
+      metrics_recorder_(metrics_recorder) {
+          order_map_.reserve(1 << 21);
+      }
 
 std::vector<MatchedOrder> InstrumentOrderMatcher::PriceLevel::matchOrder(
     Order& new_order) {
@@ -225,11 +227,12 @@ void OrderMatcher::start() {
             instrument_matcher_.end()) {
             instrument_matcher_.emplace(
                 new_order.instrument_id_,
-                InstrumentOrderMatcher(l2_data_buffer_, matched_order_buffer_,
-                                       metrics_recorder_));
+                std::make_unique<InstrumentOrderMatcher>(
+                    l2_data_buffer_, matched_order_buffer_, metrics_recorder_));
         }
 
-        instrument_matcher_.at(new_order.instrument_id_).handleOrder(new_order);
+        instrument_matcher_.at(new_order.instrument_id_)
+            ->handleOrder(new_order);
     }
 }
 
