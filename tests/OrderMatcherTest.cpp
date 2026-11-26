@@ -727,5 +727,6 @@ TEST(OrderMatcherTest, PerformanceTest) {
     std::cout << "Median latency: " << mean << "ns" << std::endl;
     std::cout << "P90 latency: " << latencies[static_cast<int>(latencies.size() * 0.9)]<< "ns" << std::endl;
     std::cout << "P99 latency: " << latencies[static_cast<int>(latencies.size() * 0.99)]<< "ns" << std::endl;
+    std::cout << "P99.9 latency: " << latencies[static_cast<int>(latencies.size() * 0.999)]<< "ns" << std::endl;
     std::cout << "Sample count: " << latencies.size() << std::endl;
 }
