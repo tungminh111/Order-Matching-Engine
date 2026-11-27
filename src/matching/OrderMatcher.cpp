@@ -133,7 +133,7 @@ void InstrumentOrderMatcher::addOrder(Order new_order) {
 
         if (new_order.quantity_ != 0 && new_order.type_ == OrderType::Limit) {
             if (!bids_.contains(new_order.price_)) {
-                bids_.emplace(new_order.price_, PriceLevel());
+                bids_.emplace(new_order.price_, PriceLevel(&custom_memory_pool_));
             }
             auto order_pos = bids_.at(new_order.price_).push(new_order);
             order_map_.emplace(new_order.order_id_, order_pos);
@@ -174,7 +174,7 @@ void InstrumentOrderMatcher::addOrder(Order new_order) {
 
         if (new_order.quantity_ != 0 && new_order.type_ == OrderType::Limit) {
             if (!asks_.contains(new_order.price_)) {
-                asks_.emplace(new_order.price_, PriceLevel());
+                asks_.emplace(new_order.price_, PriceLevel(&custom_memory_pool_));
             }
             auto order_pos = asks_.at(new_order.price_).push(new_order);
             order_map_.emplace(new_order.order_id_, order_pos);
