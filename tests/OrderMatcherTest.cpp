@@ -496,7 +496,7 @@ TEST(OrderMatcherTest, PerformanceTest) {
     // choose next 1000000 levels, random 10 orders with 10 price
     srand(time(nullptr));
     const int iteration = 30;
-    const int book_depth = 1e4;
+    const int book_depth = 1e5;
 
     uint64_t prev_mid_price = -1;
     std::multiset<std::pair<uint64_t, std::pair<uint64_t, Order>>> asks;
