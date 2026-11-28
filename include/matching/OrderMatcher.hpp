@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <list>
 #include <map>
 #include <memory>
@@ -22,17 +23,30 @@ class InstrumentOrderMatcher {
 
     void handleOrder(Order new_order);
 
+    class MatchedOrderCallback {
+       public:
+        using HandlerFn = void (*)(void* ctx, const MatchedOrder& order);
+        MatchedOrderCallback(void* ctx, HandlerFn fn) : ctx_(ctx), fn_(fn) {}
+        void operator()(const MatchedOrder& order) { fn_(ctx_, order); }
+
+       private:
+        void* ctx_;
+        HandlerFn fn_;
+    };
+
     class PriceLevel {
        public:
-        PriceLevel(custom_memory_pool_type* pool)
+        PriceLevel(custom_memory_pool_type* pool,
+                   MatchedOrderCallback matched_order_callback)
             : orders_(
                   std::list<Order,
                             BufferAllocator<Order, custom_memory_pool_type>>(
-                      BufferAllocator<Order, custom_memory_pool_type>(pool))) {}
+                      BufferAllocator<Order, custom_memory_pool_type>(pool))),
+              matched_order_callback_(matched_order_callback) {}
 
         PriceLevel() = delete;
 
-        std::vector<MatchedOrder> matchOrder(Order& new_order);
+        int64_t matchOrder(Order& new_order);
 
         std::list<Order>::iterator push(Order new_order);
 
@@ -43,6 +57,8 @@ class InstrumentOrderMatcher {
        private:
         std::list<Order, BufferAllocator<Order, custom_memory_pool_type>>
             orders_;
+
+        MatchedOrderCallback matched_order_callback_;
     };
 
     InstrumentOrderMatcher() = delete;
@@ -50,6 +66,10 @@ class InstrumentOrderMatcher {
    private:
     void addOrder(Order new_order);
     void removeOrder(int order_id);
+
+    PriceLevel newPriceLevel();
+
+    static void handleMatchedOrder(void* ctx, const MatchedOrder& order);
 
     custom_memory_pool_type custom_memory_pool_;
 
